@@ -6,19 +6,37 @@ Welcome to **SMART WASH**, the touchless AI-powered kiosk system that uses compu
 
 ## 🚀 1. Quick Start
 
-### Starting the System
-1. **Frontend Kiosk**: Open terminal in project root and run:
+### A. Production Deployment (Recommended for School Server / Kiosks)
+Run the full production stack (FastAPI AI backend + Nginx reverse proxy + React SPA) with Docker:
+```bash
+# On Windows:
+scripts\start_production.bat
+
+# On Linux / macOS:
+./scripts/start_production.sh
+
+# Or directly with Docker Compose:
+docker compose up -d --build
+```
+- **Kiosk & Dashboard**: [http://localhost:80/](http://localhost:80/) or [http://localhost:3000/](http://localhost:3000/)
+- **Backend Health Probe**: [http://localhost:4550/health](http://localhost:4550/health)
+- **Model Readiness Probe**: [http://localhost:4550/ready](http://localhost:4550/ready)
+- See [PRODUCTION_DEPLOYMENT.md](file:///c:/Users/jobiy/Downloads/smart-wash-main/smart-wash-main/PRODUCTION_DEPLOYMENT.md) for full architecture details.
+
+### B. Local Development Mode
+1. **Frontend Kiosk & Portal**: Open terminal in project root and run:
    ```bash
    npm run dev
    ```
-   - **Student Kiosk**: Open [http://localhost:3000/student](http://localhost:3000/student)
-   - **Teacher Portal**: Open [http://localhost:3000/teacher](http://localhost:3000/teacher)
+   - **Mode Selection Portal**: Open [http://localhost:3000/](http://localhost:3000/)
+   - **Direct Student Kiosk**: Open [http://localhost:3000/student](http://localhost:3000/student)
+   - **Direct Teacher Portal**: Open [http://localhost:3000/teacher](http://localhost:3000/teacher)
 
 2. **AI Vision Model Server** (FastAPI / PyTorch YOLO):
    ```bash
    py -m uvicorn backend.main:app --port 4550
    ```
-   *The kiosk connects automatically via WebSocket at `ws://localhost:4550/ws_model`.*
+   *The kiosk automatically connects to `ws://localhost:4550/ws_model`.*
 
 ---
 

@@ -1,10 +1,5 @@
-/**
- * SMART WASH — Voice & Audio Feedback Service
- * Author: Rahul (Scoring & Dashboard Lead)
- * 
- * Provides audio prompts and speech synthesis feedback for WHO handwashing steps
- * and final session encouragement.
- */
+import { speak, cancelSpeech } from '../../src/services/speechService.js';
+import { translations } from '../../src/i18n/translations.js';
 
 export const WHO_AUDIO_PROMPTS = {
   1: "Step 1: Rub palms together thoroughly.",
@@ -16,46 +11,36 @@ export const WHO_AUDIO_PROMPTS = {
 };
 
 /**
- * Speaks text using Web Speech API SpeechSynthesis if available.
+ * Speaks text using Web Speech API SpeechSynthesis or speechService.
  * @param {string} text 
+ * @param {string} lang
  */
-export function speakText(text) {
-  if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
-    window.speechSynthesis.cancel(); // Stop ongoing speech
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.rate = 1.0;
-    utterance.pitch = 1.0;
-    window.speechSynthesis.speak(utterance);
-  } else {
-    console.log(`[AudioFeedback] Speaking: "${text}"`);
-  }
+export function speakText(text, lang = 'en') {
+  speak('custom_speech', lang, text);
 }
 
 /**
- * Speaks WHO step instruction prompt.
+ * Speaks WHO step instruction prompt in selected language.
  * @param {number} stepNumber 
+ * @param {string} lang
  */
-export function speakStepInstruction(stepNumber) {
-  const promptText = WHO_AUDIO_PROMPTS[stepNumber] || `Step ${stepNumber}`;
-  speakText(promptText);
+export function speakStepInstruction(stepNumber, lang = 'en') {
+  speak(`step_${stepNumber}_audio`, lang);
 }
 
 /**
- * Speaks score encouragement praise.
+ * Speaks score encouragement praise in selected language.
  * @param {number} score 
  * @param {string} studentName 
+ * @param {string} lang
  */
-export function speakEncouragement(score, studentName = '') {
-  const namePrefix = studentName ? `Great job, ${studentName}! ` : 'Great job! ';
-  let message = `${namePrefix}Your handwashing score is ${score} out of 100.`;
+export function speakEncouragement(score, studentName = '', lang = 'en') {
+  const audioKey = score >= 85 
+    ? 'encouragement_excellent_audio' 
+    : score >= 70 
+    ? 'encouragement_good_audio' 
+    : 'encouragement_practice_audio';
 
-  if (score >= 90) {
-    message += " Outstanding compliance!";
-  } else if (score >= 75) {
-    message += " Good technique!";
-  } else {
-    message += " Keep practicing all 6 WHO steps.";
-  }
-
-  speakText(message);
+  speak(audioKey, lang);
 }
+

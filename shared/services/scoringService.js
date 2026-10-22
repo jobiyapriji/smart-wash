@@ -1,10 +1,19 @@
 /**
- * SMART WASH — WHO Handwashing Scoring Engine
- * Author: Rahul (Scoring & Dashboard Lead)
+ * SMART WASH — WHO Handwashing Scoring Engine (Strict Tier & Bonus Edition)
  * 
- * Deterministic compliance scoring engine:
- * Score = max(0, min(100, (Sum(W_i)/Sum(W_j) * 100) - P_missed - P_out_of_order))
+ * Rules enforced:
+ * - Deterministic compliance scoring formula:
+ *   Score = max(0, min(100, BaseCompletion - P_missed - P_out_of_order))
+ * - Tiers:
+ *     0 - 39:  "Let's try again"
+ *    40 - 69:  "Good try"
+ *    70 - 89:  "Great job"
+ *    90 - 100: "Superstar"
+ * - Hygiene bonus: Awarded ONLY if score >= 70 AND >= 4 steps verified.
+ * - Score 2/100 never shows "Superstar" or a bonus!
  */
+
+import { HANDWASH_CONFIG } from '../config/handwashConfig.js';
 
 export const TARGET_STEP_DURATION_MS = 6000;
 
@@ -13,63 +22,71 @@ export function calculateHandwashScore(completedSteps = [], missedSteps = []) {
     return {
       totalScore: 0,
       completionScore: 0,
-      durationScore: 0,
-      confidenceScore: 0,
-      grade: 'Needs Improvement',
-      feedbackMessage: 'No handwashing steps recorded.'
+      grade: HANDWASH_CONFIG.TIERS.TRY_AGAIN.label,
+      tier: 'TRY_AGAIN',
+      feedbackMessage: "No handwashing steps recorded. Let's try again!",
+      bonusAwarded: false,
+      bonusPoints: 0
     };
   }
 
   const EXPECTED_STEPS = 6;
-  const W_i = 1; // Weight per step
-  
+  const W_i = 1;
   const totalWeightCompleted = completedSteps.length * W_i;
   const totalWeightExpected = EXPECTED_STEPS * W_i;
-  
+
   // Base completion score (out of 100)
   const baseScore = (totalWeightCompleted / totalWeightExpected) * 100;
-  
+
   // Penalties
-  const P_missed = missedSteps.length * 15; // 15 point penalty per missed step
-  
-  // Check for out-of-order execution in the completedSteps array
+  const P_missed = missedSteps.length * 15;
+
   let outOfOrderViolations = 0;
   let lastStep = 0;
   for (const step of completedSteps) {
-      const stepNum = typeof step === 'object' && step !== null ? (step.stepNumber ?? 0) : Number(step);
-      if (stepNum < lastStep) {
-          outOfOrderViolations++;
-      }
-      lastStep = stepNum;
+    const stepNum = typeof step === 'object' && step !== null ? (step.stepNumber ?? 0) : Number(step);
+    if (stepNum < lastStep) {
+      outOfOrderViolations++;
+    }
+    lastStep = stepNum;
   }
-  const P_out_of_order = outOfOrderViolations * 10; // 10 point penalty per out of order
-  
-  // Final calculation clamped between 0 and 100
+  const P_out_of_order = outOfOrderViolations * 10;
+
   let totalScore = baseScore - P_missed - P_out_of_order;
   totalScore = Math.max(0, Math.min(100, Math.round(totalScore)));
 
-  // Determine Grade & Feedback Message
-  let grade = 'Needs Improvement';
-  let feedbackMessage = 'Try to complete all 6 WHO steps in order!';
+  // Determine Tiers strictly based on Rule 7
+  let grade = HANDWASH_CONFIG.TIERS.TRY_AGAIN.label;
+  let tier = 'TRY_AGAIN';
+  let feedbackMessage = "Let's try again! Keep practicing all 6 WHO steps.";
 
-  if (totalScore >= 90) {
-    grade = 'Excellent';
-    feedbackMessage = 'Outstanding handwashing technique! Full WHO compliance achieved!';
-  } else if (totalScore >= 75) {
-    grade = 'Good';
-    feedbackMessage = 'Great job! Ensure you follow the correct sequence for a perfect score.';
-  } else if (totalScore >= 60) {
-    grade = 'Satisfactory';
-    feedbackMessage = 'Good effort! Make sure to cover all WHO steps thoroughly.';
+  if (totalScore >= HANDWASH_CONFIG.TIERS.SUPERSTAR.min) {
+    grade = HANDWASH_CONFIG.TIERS.SUPERSTAR.label;
+    tier = 'SUPERSTAR';
+    feedbackMessage = 'Superstar! Outstanding WHO handwash technique!';
+  } else if (totalScore >= HANDWASH_CONFIG.TIERS.GREAT_JOB.min) {
+    grade = HANDWASH_CONFIG.TIERS.GREAT_JOB.label;
+    tier = 'GREAT_JOB';
+    feedbackMessage = 'Great job! You followed the correct technique!';
+  } else if (totalScore >= HANDWASH_CONFIG.TIERS.GOOD_TRY.min) {
+    grade = HANDWASH_CONFIG.TIERS.GOOD_TRY.label;
+    tier = 'GOOD_TRY';
+    feedbackMessage = 'Good try! Cover all areas thoroughly next time.';
   }
+
+  // Rule 7: Award hygiene bonus ONLY if score >= 70 AND >= 4 verified steps
+  const qualifiesForBonus = totalScore >= HANDWASH_CONFIG.BONUS_MIN_SCORE && 
+                            completedSteps.length >= HANDWASH_CONFIG.BONUS_MIN_STEPS;
+  const bonusPoints = qualifiesForBonus ? HANDWASH_CONFIG.BONUS_POINTS : 0;
 
   return {
     totalScore,
     completionScore: Math.round(baseScore),
-    durationScore: 0, // Deprecated in new formula
-    confidenceScore: 0, // Handled implicitly by state machine thresholds
     grade,
-    feedbackMessage
+    tier,
+    feedbackMessage,
+    bonusAwarded: qualifiesForBonus,
+    bonusPoints
   };
 }
 

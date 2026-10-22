@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import * as faceapi from '@vladmandic/face-api';
 import { enrollStudent } from '../../../../shared/services/studentService.js';
+import { Camera, Check, AlertCircle, RefreshCw, ArrowLeft } from 'lucide-react';
 
 export function StudentEnrollmentForm({ onEnrollmentSuccess }) {
   const navigate = useNavigate();
@@ -87,7 +88,7 @@ export function StudentEnrollmentForm({ onEnrollmentSuccess }) {
         throw new Error("Multiple faces detected! Please ensure only the student is in frame.");
       }
 
-      // We have exactly one face
+      // Exactly one face
       const descriptor = Array.from(detections[0].descriptor);
       setExtractedDescriptor(descriptor);
 
@@ -141,97 +142,361 @@ export function StudentEnrollmentForm({ onEnrollmentSuccess }) {
     }
   };
 
+  const inputStyle = {
+    width: '100%',
+    padding: '12px 16px',
+    borderRadius: '12px',
+    border: '2px solid #CBD5E1',
+    background: '#FFFFFF',
+    color: '#1E293B',
+    fontSize: '14px',
+    fontWeight: 600,
+    outline: 'none',
+    boxSizing: 'border-box',
+    transition: 'all 0.15s ease'
+  };
+
+  const labelStyle = {
+    display: 'block',
+    fontSize: '11px',
+    fontWeight: 800,
+    color: '#1E293B',
+    marginBottom: '6px',
+    textTransform: 'uppercase',
+    letterSpacing: '0.06em',
+    fontFamily: 'Outfit, sans-serif'
+  };
+
+  const handleInputFocus = (e) => {
+    e.target.style.borderColor = '#8B5CF6';
+    e.target.style.boxShadow = '4px 4px 0px 0px #8B5CF6';
+  };
+
+  const handleInputBlur = (e) => {
+    e.target.style.borderColor = '#CBD5E1';
+    e.target.style.boxShadow = 'none';
+  };
+
   return (
-    <div style={{ background: 'rgba(30, 41, 59, 0.4)', borderRadius: '16px', padding: '32px', border: '1px solid rgba(255,255,255,0.08)' }}>
-      <div style={{ marginBottom: '24px' }}>
-        <h2 style={{ margin: 0, fontSize: '24px', fontWeight: 800 }}>Enroll New Student</h2>
-        <p style={{ margin: '8px 0 0 0', color: '#94a3b8', fontSize: '14px' }}>Register a student profile and capture their biometric face descriptor for kiosk authentication.</p>
+    <div style={{
+      background: '#FFFFFF',
+      borderRadius: '24px',
+      padding: '32px',
+      border: '2.5px solid #1E293B',
+      boxShadow: '4px 4px 0px 0px #1E293B',
+      fontFamily: "'Plus Jakarta Sans', sans-serif"
+    }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '28px', flexWrap: 'wrap', gap: '12px' }}>
+        <div>
+          <h2 style={{ margin: 0, fontSize: '26px', fontWeight: 800, color: '#1E293B', fontFamily: 'Outfit, sans-serif' }}>
+            Enroll New Student
+          </h2>
+          <p style={{ margin: '6px 0 0 0', color: '#64748B', fontSize: '14px', fontWeight: 500 }}>
+            Register student profile and capture their biometric face descriptor for kiosk authentication.
+          </p>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => navigate('/teacher/students')}
+          style={{
+            padding: '8px 16px',
+            borderRadius: '9999px',
+            border: '2px solid #1E293B',
+            background: '#FFFDF5',
+            color: '#1E293B',
+            fontSize: '12px',
+            fontWeight: 800,
+            cursor: 'pointer',
+            boxShadow: '2px 2px 0 0 #1E293B',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '6px',
+            fontFamily: 'Outfit, sans-serif'
+          }}
+        >
+          <ArrowLeft size={14} strokeWidth={2.5} />
+          <span>Back to Roster</span>
+        </button>
       </div>
 
       {error && (
-        <div style={{ background: 'rgba(239, 68, 68, 0.15)', border: '1px solid #ef4444', padding: '12px 16px', borderRadius: '8px', color: '#fca5a5', marginBottom: '24px', fontSize: '14px' }}>
-          ⚠️ {error}
+        <div style={{
+          background: '#FEE2E2',
+          border: '2px solid #1E293B',
+          padding: '12px 18px',
+          borderRadius: '16px',
+          color: '#1E293B',
+          marginBottom: '24px',
+          fontSize: '13px',
+          fontWeight: 700,
+          boxShadow: '3px 3px 0px 0px #1E293B',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px'
+        }}>
+          <AlertCircle size={16} strokeWidth={2.5} color="#DC2626" />
+          <span>{error}</span>
         </div>
       )}
 
       {success && (
-        <div style={{ background: 'rgba(16, 185, 129, 0.15)', border: '1px solid #10b981', padding: '12px 16px', borderRadius: '8px', color: '#6ee7b7', marginBottom: '24px', fontSize: '14px' }}>
-          ✅ Student enrolled successfully! Redirecting...
+        <div style={{
+          background: '#D1FAE5',
+          border: '2px solid #1E293B',
+          padding: '12px 18px',
+          borderRadius: '16px',
+          color: '#1E293B',
+          marginBottom: '24px',
+          fontSize: '13px',
+          fontWeight: 800,
+          boxShadow: '3px 3px 0px 0px #1E293B',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px'
+        }}>
+          <Check size={16} strokeWidth={3} color="#059669" />
+          <span>Student enrolled successfully! Redirecting...</span>
         </div>
       )}
 
-      <form onSubmit={handleSave} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '32px' }}>
-        {/* Left Column: Form */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+      <form onSubmit={handleSave} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '32px' }}>
+        {/* Left Column: Input Fields */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
           <div>
-            <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#cbd5e1', marginBottom: '6px' }}>STUDENT ID *</label>
-            <input type="text" value={formData.studentId} onChange={e => setFormData({...formData, studentId: e.target.value})} placeholder="e.g. STU_205" style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(15,23,42,0.6)', color: '#fff', fontSize: '14px' }} required />
+            <label style={labelStyle}>STUDENT ID *</label>
+            <input
+              type="text"
+              value={formData.studentId}
+              onChange={e => setFormData({...formData, studentId: e.target.value})}
+              placeholder="e.g. STU_205"
+              style={inputStyle}
+              onFocus={handleInputFocus}
+              onBlur={handleInputBlur}
+              required
+            />
           </div>
+
           <div>
-            <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#cbd5e1', marginBottom: '6px' }}>FULL NAME *</label>
-            <input type="text" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} placeholder="e.g. John Doe" style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(15,23,42,0.6)', color: '#fff', fontSize: '14px' }} required />
+            <label style={labelStyle}>FULL NAME *</label>
+            <input
+              type="text"
+              value={formData.name}
+              onChange={e => setFormData({...formData, name: e.target.value})}
+              placeholder="e.g. John Doe"
+              style={inputStyle}
+              onFocus={handleInputFocus}
+              onBlur={handleInputBlur}
+              required
+            />
           </div>
+
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
             <div>
-              <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#cbd5e1', marginBottom: '6px' }}>CLASS</label>
-              <input type="text" value={formData.className} onChange={e => setFormData({...formData, className: e.target.value})} placeholder="e.g. S5" style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(15,23,42,0.6)', color: '#fff', fontSize: '14px' }} />
+              <label style={labelStyle}>CLASS</label>
+              <input
+                type="text"
+                value={formData.className}
+                onChange={e => setFormData({...formData, className: e.target.value})}
+                placeholder="e.g. Grade 5"
+                style={inputStyle}
+                onFocus={handleInputFocus}
+                onBlur={handleInputBlur}
+              />
             </div>
             <div>
-              <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#cbd5e1', marginBottom: '6px' }}>SECTION</label>
-              <input type="text" value={formData.section} onChange={e => setFormData({...formData, section: e.target.value})} placeholder="e.g. CSE" style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(15,23,42,0.6)', color: '#fff', fontSize: '14px' }} />
+              <label style={labelStyle}>SECTION</label>
+              <input
+                type="text"
+                value={formData.section}
+                onChange={e => setFormData({...formData, section: e.target.value})}
+                placeholder="e.g. A"
+                style={inputStyle}
+                onFocus={handleInputFocus}
+                onBlur={handleInputBlur}
+              />
             </div>
           </div>
+
           <div>
-            <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#cbd5e1', marginBottom: '6px' }}>ROLL NUMBER</label>
-            <input type="text" value={formData.rollNumber} onChange={e => setFormData({...formData, rollNumber: e.target.value})} placeholder="e.g. 12" style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(15,23,42,0.6)', color: '#fff', fontSize: '14px' }} />
+            <label style={labelStyle}>ROLL NUMBER</label>
+            <input
+              type="text"
+              value={formData.rollNumber}
+              onChange={e => setFormData({...formData, rollNumber: e.target.value})}
+              placeholder="e.g. 12"
+              style={inputStyle}
+              onFocus={handleInputFocus}
+              onBlur={handleInputBlur}
+            />
           </div>
         </div>
 
-        {/* Right Column: Camera & Capture */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#cbd5e1' }}>BIOMETRIC PHOTO CAPTURE *</label>
+        {/* Right Column: Sticker Framed Webcam Capture */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+          <label style={labelStyle}>BIOMETRIC PHOTO CAPTURE *</label>
           
-          <div style={{ background: '#000', borderRadius: '12px', overflow: 'hidden', position: 'relative', width: '100%', aspectRatio: '4/3', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{
+            background: '#090D16',
+            borderRadius: '24px 24px 24px 4px',
+            overflow: 'hidden',
+            position: 'relative',
+            width: '100%',
+            aspectRatio: '4/3',
+            border: '3px solid #1E293B',
+            boxShadow: '4px 4px 0px 0px #1E293B',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}>
             {!stream && !capturedPhoto && (
-              <button type="button" onClick={startCamera} style={{ padding: '12px 24px', borderRadius: '8px', background: '#3b82f6', color: '#fff', border: 'none', cursor: 'pointer', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                📷 Start Camera
+              <button
+                type="button"
+                onClick={startCamera}
+                style={{
+                  padding: '12px 24px',
+                  borderRadius: '9999px',
+                  background: '#8B5CF6',
+                  color: '#FFFFFF',
+                  border: '2px solid #1E293B',
+                  boxShadow: '3px 3px 0 0 #1E293B',
+                  cursor: 'pointer',
+                  fontWeight: 800,
+                  fontSize: '14px',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  fontFamily: 'Outfit, sans-serif'
+                }}
+              >
+                <Camera size={18} strokeWidth={2.5} />
+                <span>Start Camera</span>
               </button>
             )}
             
-            <video ref={videoRef} autoPlay playsInline muted style={{ display: stream && !capturedPhoto ? 'block' : 'none', width: '100%', height: '100%', objectFit: 'cover' }} />
+            <video
+              ref={videoRef}
+              autoPlay
+              playsInline
+              muted
+              style={{
+                display: stream && !capturedPhoto ? 'block' : 'none',
+                width: '100%',
+                height: '100%',
+                objectFit: 'cover'
+              }}
+            />
             
             {capturedPhoto && (
-              <img src={capturedPhoto} alt="Captured" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              <img
+                src={capturedPhoto}
+                alt="Captured"
+                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+              />
             )}
             
             <canvas ref={canvasRef} style={{ display: 'none' }} />
           </div>
 
           {stream && !capturedPhoto && (
-            <button type="button" onClick={captureAndExtract} disabled={isProcessing || !isModelLoaded} style={{ padding: '14px', borderRadius: '8px', background: '#10b981', color: '#fff', border: 'none', cursor: 'pointer', fontWeight: 700 }}>
-              {isProcessing ? 'Analyzing Face...' : '📸 Capture & Extract Descriptor'}
+            <button
+              type="button"
+              onClick={captureAndExtract}
+              disabled={isProcessing || !isModelLoaded}
+              style={{
+                padding: '14px',
+                borderRadius: '9999px',
+                background: '#34D399',
+                color: '#1E293B',
+                border: '2px solid #1E293B',
+                boxShadow: '3px 3px 0 0 #1E293B',
+                cursor: 'pointer',
+                fontWeight: 800,
+                fontSize: '14px',
+                fontFamily: 'Outfit, sans-serif',
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px'
+              }}
+            >
+              <Camera size={16} strokeWidth={2.5} />
+              <span>{isProcessing ? 'Analyzing Face...' : 'Capture & Extract Descriptor'}</span>
             </button>
           )}
 
           {capturedPhoto && (
             <div style={{ display: 'flex', gap: '12px' }}>
-              <div style={{ flex: 1, padding: '12px', background: 'rgba(16, 185, 129, 0.1)', border: '1px solid #10b981', borderRadius: '8px', color: '#34d399', fontSize: '13px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                ✓ Face Descriptor Generated
+              <div style={{
+                flex: 1,
+                padding: '10px 14px',
+                background: '#D1FAE5',
+                border: '2px solid #1E293B',
+                borderRadius: '12px',
+                color: '#1E293B',
+                fontSize: '13px',
+                fontWeight: 800,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '6px',
+                fontFamily: 'Outfit, sans-serif'
+              }}>
+                <Check size={16} strokeWidth={3} color="#059669" />
+                <span>Face Descriptor Ready</span>
               </div>
-              <button type="button" onClick={startCamera} style={{ padding: '12px 16px', borderRadius: '8px', background: 'rgba(255,255,255,0.1)', color: '#fff', border: 'none', cursor: 'pointer', fontWeight: 600 }}>
-                Retake
+              <button
+                type="button"
+                onClick={startCamera}
+                style={{
+                  padding: '10px 18px',
+                  borderRadius: '12px',
+                  background: '#FFFDF5',
+                  color: '#1E293B',
+                  border: '2px solid #1E293B',
+                  boxShadow: '2px 2px 0 0 #1E293B',
+                  cursor: 'pointer',
+                  fontWeight: 800,
+                  fontSize: '13px',
+                  fontFamily: 'Outfit, sans-serif',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px'
+                }}
+              >
+                <RefreshCw size={14} strokeWidth={2.5} />
+                <span>Retake</span>
               </button>
             </div>
           )}
         </div>
 
         {/* Full width save button */}
-        <div style={{ gridColumn: '1 / -1', marginTop: '16px', borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: '24px' }}>
-          <button type="submit" disabled={isProcessing || success} style={{ padding: '16px 32px', borderRadius: '8px', background: 'linear-gradient(135deg, #3b82f6, #6366f1)', color: '#fff', border: 'none', cursor: 'pointer', fontWeight: 800, fontSize: '15px', width: '100%' }}>
-            Save & Enroll Student
+        <div style={{ gridColumn: '1 / -1', marginTop: '12px', borderTop: '2px solid #E2E8F0', paddingTop: '24px' }}>
+          <button
+            type="submit"
+            disabled={isProcessing || success}
+            style={{
+              padding: '16px 32px',
+              borderRadius: '9999px',
+              background: '#8B5CF6',
+              color: '#FFFFFF',
+              border: '2.5px solid #1E293B',
+              boxShadow: '4px 4px 0px 0px #1E293B',
+              cursor: 'pointer',
+              fontWeight: 800,
+              fontSize: '16px',
+              width: '100%',
+              fontFamily: 'Outfit, sans-serif',
+              transition: 'transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1)'
+            }}
+          >
+            {isProcessing ? 'Processing Biometrics...' : 'Save & Enroll Student ➔'}
           </button>
         </div>
       </form>
     </div>
   );
 }
+
+export default StudentEnrollmentForm;

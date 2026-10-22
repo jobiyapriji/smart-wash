@@ -8,8 +8,12 @@ except (ImportError, ValueError):
 class inferance:
     def __init__(self):
         self.path = os.path.dirname(os.path.abspath(__file__))
-        self.classification_model = YOLO(os.path.join(self.path, "models/classifier/best.pt"))
+        model_path = os.path.join(self.path, "models/classifier/best.pt")
+        self.classification_model = YOLO(model_path)
         self.classifier = Classifier(model=self.classification_model)
+        self.device = str(getattr(self.classification_model, 'device', 'cpu'))
+        self.names = getattr(self.classification_model, 'names', {})
+        self.model_loaded = self.classification_model is not None
 
     def predict(self, image):
         # image is a 320x320 BGR numpy array

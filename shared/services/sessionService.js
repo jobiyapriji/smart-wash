@@ -31,8 +31,11 @@ const mockSessionsStore = new Map();
  * @param {string} identityMethod
  * @returns {Promise<{ id: string, session: import('../types.js').Session }>}
  */
-export async function createSession(studentId, studentName, identityMethod = 'face_recognition') {
-  const initialSession = createDefaultSession(studentId, studentName, identityMethod);
+export async function createSession(studentId, studentName, identityMethod = 'face_recognition', classId = 'UNKNOWN', mode = 'strict') {
+  const initialSession = {
+    ...createDefaultSession(studentId, studentName, identityMethod, classId),
+    mode
+  };
   
   if (db && !isMockFirebase) {
     try {

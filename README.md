@@ -73,9 +73,10 @@ npm test
 
 ## 🌐 Application Routing Architecture
 
-The application has been separated into two completely isolated environments to simulate the real-world deployment:
+The application provides a unified entry experience with isolated mode environments:
 
-- **Student Kiosk (`/student`)**: This route serves the `StudentKioskApp`. It represents the dedicated touch-screen appliance located at the handwashing station. It handles the AI vision, face recognition, and handwashing guidance. It does *not* contain any navigation to the teacher portal. The application defaults to this route.
-- **Teacher Portal (`/teacher`)**: This route serves the `TeacherDashboardApp`. It represents a separate interface that teachers log into remotely from their own devices to view analytics, compliance, and student history.
+- **Portal Mode Selection (`/`)**: The root route renders [`LandingModeSelect`](file:///c:/Users/jobiy/Downloads/smart-wash-main/smart-wash-main/src/components/LandingModeSelect.jsx), allowing users/operators to choose between the Student Kiosk or the Teacher Portal.
+- **Student Kiosk (`/student`)**: This route serves [`StudentKioskApp`](file:///c:/Users/jobiy/Downloads/smart-wash-main/smart-wash-main/apps/student-app/src/StudentApp.jsx). It is responsive and optimized for mobile phones or touch-screen tablets mounted at the sink. It autonomously handles AI computer vision, Face ID recognition, and 6 WHO step guidance. Includes an easy `Exit Kiosk` navigation button.
+- **Teacher Portal (`/teacher`)**: This route serves [`TeacherDashboardApp`](file:///c:/Users/jobiy/Downloads/smart-wash-main/smart-wash-main/apps/teacher-dashboard/src/TeacherDashboardApp.jsx). It features secure staff email/password authentication (Option A) to protect student biometric data, and provides compliance trend graphs, student roster management, biometric face enrollment, and leaderboards.
 
-Both interfaces communicate with the same backend database to sync data.
+Both interfaces communicate with the same shared backend and data services to sync sessions and student profiles.

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Routes, Route, Link, useLocation } from 'react-router-dom';
+import { Routes, Route, Link, useLocation, useNavigate } from 'react-router-dom';
 import { ComplianceTrendChart } from './components/ComplianceTrendChart.jsx';
 import { StudentLeaderboard } from './components/StudentLeaderboard.jsx';
 import { StudentManagementList } from './components/StudentManagementList.jsx';
@@ -8,39 +8,269 @@ import { StudentProfile } from './components/StudentProfile.jsx';
 import { getAllStudents } from '../../../shared/services/studentService.js';
 import { getAllSessions } from '../../../shared/services/sessionService.js';
 import { isMockFirebase } from '../../../shared/firebaseConfig.js';
+import { LoadingPage } from '../../../src/components/LoadingPage.jsx';
 
-function OverviewDashboard({ students, sessions, searchTerm, setSearchTerm, avgClassScore, filteredStudents }) {
+import { Confetti } from '../../../src/components/ui/Confetti.jsx';
+import { Button } from '../../../src/components/ui/Button.jsx';
+import { Card } from '../../../src/components/ui/Card.jsx';
+import { IconBadge } from '../../../src/components/ui/IconBadge.jsx';
+import {
+  GraduationCap,
+  Sparkles,
+  Users,
+  CheckCircle2,
+  Calendar,
+  LogOut,
+  ArrowLeft,
+  Lock,
+  Mail,
+  Home,
+  BarChart3,
+  UserCheck
+} from 'lucide-react';
+
+function OverviewDashboard({ students, sessions, avgClassScore }) {
   return (
     <>
-      {/* Overview Stat Cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '20px', marginBottom: '32px' }}>
-        <div style={{ background: 'rgba(30, 41, 59, 0.4)', borderRadius: '16px', padding: '20px', border: '1px solid rgba(255,255,255,0.08)' }}>
-          <div style={{ fontSize: '12px', color: '#94a3b8', textTransform: 'uppercase', fontWeight: 700 }}>Class Average Score</div>
-          <div style={{ fontSize: '36px', fontWeight: 800, color: '#34d399', margin: '4px 0' }}>{avgClassScore}</div>
-          <div style={{ fontSize: '11px', color: '#34d399' }}>+4% from last week</div>
+      {/* 4 Overview Stat Cards as Stickers */}
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+        gap: '20px',
+        marginBottom: '32px'
+      }}>
+        {/* Stat 1: Class Average Score */}
+        <div style={{
+          background: '#FFFFFF',
+          borderRadius: '20px',
+          padding: '22px',
+          border: '2.5px solid #1E293B',
+          boxShadow: '4px 4px 0px 0px #1E293B',
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'space-between',
+          transition: 'transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1)',
+          cursor: 'default'
+        }}
+        onMouseEnter={e => {
+          e.currentTarget.style.transform = 'translate(-2px, -2px) rotate(-0.5deg)';
+          e.currentTarget.style.boxShadow = '6px 6px 0px 0px #1E293B';
+        }}
+        onMouseLeave={e => {
+          e.currentTarget.style.transform = 'none';
+          e.currentTarget.style.boxShadow = '4px 4px 0px 0px #1E293B';
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontSize: '11px', color: '#64748B', textTransform: 'uppercase', fontWeight: 800, letterSpacing: '0.04em', fontFamily: 'Outfit, sans-serif' }}>
+              Class Avg Score
+            </span>
+            <div style={{
+              width: '32px',
+              height: '32px',
+              borderRadius: '50%',
+              background: '#D1FAE5',
+              border: '1.5px solid #1E293B',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}>
+              <Sparkles size={16} strokeWidth={2.5} color="#059669" />
+            </div>
+          </div>
+          <div style={{ fontSize: '38px', fontWeight: 900, color: '#1E293B', margin: '8px 0 4px 0', fontFamily: 'Outfit, sans-serif' }}>
+            {avgClassScore}
+          </div>
+          <div style={{
+            fontSize: '11px',
+            color: '#1E293B',
+            fontWeight: 800,
+            background: '#D1FAE5',
+            padding: '2px 8px',
+            borderRadius: '9999px',
+            border: '1px solid #1E293B',
+            alignSelf: 'flex-start',
+            fontFamily: 'Outfit, sans-serif'
+          }}>
+            +4% from last week
+          </div>
         </div>
 
-        <div style={{ background: 'rgba(30, 41, 59, 0.4)', borderRadius: '16px', padding: '20px', border: '1px solid rgba(255,255,255,0.08)' }}>
-          <div style={{ fontSize: '12px', color: '#94a3b8', textTransform: 'uppercase', fontWeight: 700 }}>Active Students</div>
-          <div style={{ fontSize: '36px', fontWeight: 800, color: '#60a5fa', margin: '4px 0' }}>{students.length || 5}</div>
-          <div style={{ fontSize: '11px', color: '#94a3b8' }}>100% face enrolled</div>
+        {/* Stat 2: Active Students */}
+        <div style={{
+          background: '#FFFFFF',
+          borderRadius: '20px',
+          padding: '22px',
+          border: '2.5px solid #1E293B',
+          boxShadow: '4px 4px 0px 0px #1E293B',
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'space-between',
+          transition: 'transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1)',
+          cursor: 'default'
+        }}
+        onMouseEnter={e => {
+          e.currentTarget.style.transform = 'translate(-2px, -2px) rotate(0.5deg)';
+          e.currentTarget.style.boxShadow = '6px 6px 0px 0px #1E293B';
+        }}
+        onMouseLeave={e => {
+          e.currentTarget.style.transform = 'none';
+          e.currentTarget.style.boxShadow = '4px 4px 0px 0px #1E293B';
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontSize: '11px', color: '#64748B', textTransform: 'uppercase', fontWeight: 800, letterSpacing: '0.04em', fontFamily: 'Outfit, sans-serif' }}>
+              Active Students
+            </span>
+            <div style={{
+              width: '32px',
+              height: '32px',
+              borderRadius: '50%',
+              background: '#EDE9FE',
+              border: '1.5px solid #1E293B',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}>
+              <Users size={16} strokeWidth={2.5} color="#8B5CF6" />
+            </div>
+          </div>
+          <div style={{ fontSize: '38px', fontWeight: 900, color: '#1E293B', margin: '8px 0 4px 0', fontFamily: 'Outfit, sans-serif' }}>
+            {students.length || 5}
+          </div>
+          <div style={{
+            fontSize: '11px',
+            color: '#1E293B',
+            fontWeight: 800,
+            background: '#EDE9FE',
+            padding: '2px 8px',
+            borderRadius: '9999px',
+            border: '1px solid #1E293B',
+            alignSelf: 'flex-start',
+            fontFamily: 'Outfit, sans-serif'
+          }}>
+            100% face enrolled
+          </div>
         </div>
 
-        <div style={{ background: 'rgba(30, 41, 59, 0.4)', borderRadius: '16px', padding: '20px', border: '1px solid rgba(255,255,255,0.08)' }}>
-          <div style={{ fontSize: '12px', color: '#94a3b8', textTransform: 'uppercase', fontWeight: 700 }}>Compliance Rate</div>
-          <div style={{ fontSize: '36px', fontWeight: 800, color: '#c084fc', margin: '4px 0' }}>96%</div>
-          <div style={{ fontSize: '11px', color: '#c084fc' }}>WHO Step compliance</div>
+        {/* Stat 3: Compliance Rate */}
+        <div style={{
+          background: '#FFFFFF',
+          borderRadius: '20px',
+          padding: '22px',
+          border: '2.5px solid #1E293B',
+          boxShadow: '4px 4px 0px 0px #1E293B',
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'space-between',
+          transition: 'transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1)',
+          cursor: 'default'
+        }}
+        onMouseEnter={e => {
+          e.currentTarget.style.transform = 'translate(-2px, -2px) rotate(-0.5deg)';
+          e.currentTarget.style.boxShadow = '6px 6px 0px 0px #1E293B';
+        }}
+        onMouseLeave={e => {
+          e.currentTarget.style.transform = 'none';
+          e.currentTarget.style.boxShadow = '4px 4px 0px 0px #1E293B';
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontSize: '11px', color: '#64748B', textTransform: 'uppercase', fontWeight: 800, letterSpacing: '0.04em', fontFamily: 'Outfit, sans-serif' }}>
+              Compliance Rate
+            </span>
+            <div style={{
+              width: '32px',
+              height: '32px',
+              borderRadius: '50%',
+              background: '#FCE7F3',
+              border: '1.5px solid #1E293B',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}>
+              <CheckCircle2 size={16} strokeWidth={2.5} color="#F472B6" />
+            </div>
+          </div>
+          <div style={{ fontSize: '38px', fontWeight: 900, color: '#1E293B', margin: '8px 0 4px 0', fontFamily: 'Outfit, sans-serif' }}>
+            96%
+          </div>
+          <div style={{
+            fontSize: '11px',
+            color: '#1E293B',
+            fontWeight: 800,
+            background: '#FCE7F3',
+            padding: '2px 8px',
+            borderRadius: '9999px',
+            border: '1px solid #1E293B',
+            alignSelf: 'flex-start',
+            fontFamily: 'Outfit, sans-serif'
+          }}>
+            WHO Step compliance
+          </div>
         </div>
 
-        <div style={{ background: 'rgba(30, 41, 59, 0.4)', borderRadius: '16px', padding: '20px', border: '1px solid rgba(255,255,255,0.08)' }}>
-          <div style={{ fontSize: '12px', color: '#94a3b8', textTransform: 'uppercase', fontWeight: 700 }}>Total Sessions</div>
-          <div style={{ fontSize: '36px', fontWeight: 800, color: '#fbbf24', margin: '4px 0' }}>{sessions.length + 42}</div>
-          <div style={{ fontSize: '11px', color: '#fbbf24' }}>Tracked today</div>
+        {/* Stat 4: Total Sessions */}
+        <div style={{
+          background: '#FFFFFF',
+          borderRadius: '20px',
+          padding: '22px',
+          border: '2.5px solid #1E293B',
+          boxShadow: '4px 4px 0px 0px #1E293B',
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'space-between',
+          transition: 'transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1)',
+          cursor: 'default'
+        }}
+        onMouseEnter={e => {
+          e.currentTarget.style.transform = 'translate(-2px, -2px) rotate(0.5deg)';
+          e.currentTarget.style.boxShadow = '6px 6px 0px 0px #1E293B';
+        }}
+        onMouseLeave={e => {
+          e.currentTarget.style.transform = 'none';
+          e.currentTarget.style.boxShadow = '4px 4px 0px 0px #1E293B';
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontSize: '11px', color: '#64748B', textTransform: 'uppercase', fontWeight: 800, letterSpacing: '0.04em', fontFamily: 'Outfit, sans-serif' }}>
+              Total Sessions
+            </span>
+            <div style={{
+              width: '32px',
+              height: '32px',
+              borderRadius: '50%',
+              background: '#FEF3C7',
+              border: '1.5px solid #1E293B',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}>
+              <Calendar size={16} strokeWidth={2.5} color="#D97706" />
+            </div>
+          </div>
+          <div style={{ fontSize: '38px', fontWeight: 900, color: '#1E293B', margin: '8px 0 4px 0', fontFamily: 'Outfit, sans-serif' }}>
+            {sessions.length + 42}
+          </div>
+          <div style={{
+            fontSize: '11px',
+            color: '#1E293B',
+            fontWeight: 800,
+            background: '#FEF3C7',
+            padding: '2px 8px',
+            borderRadius: '9999px',
+            border: '1px solid #1E293B',
+            alignSelf: 'flex-start',
+            fontFamily: 'Outfit, sans-serif'
+          }}>
+            Tracked today
+          </div>
         </div>
       </div>
 
       {/* Main Grid: Trend Chart & Leaderboard */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px', marginBottom: '32px' }}>
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))',
+        gap: '24px',
+        marginBottom: '32px'
+      }}>
         <ComplianceTrendChart />
         <StudentLeaderboard students={students} />
       </div>
@@ -49,16 +279,58 @@ function OverviewDashboard({ students, sessions, searchTerm, setSearchTerm, avgC
 }
 
 export function TeacherDashboardApp() {
-  const [isAuthenticated, setIsAuthenticated] = useState(true);
+  const navigate = useNavigate();
+  const [isAuthenticated, setIsAuthenticated] = useState(() => {
+    return sessionStorage.getItem('smartwash_teacher_auth') === 'true' ||
+           (typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('auth') === 'true');
+  });
   const [teacherEmail, setTeacherEmail] = useState('teacher@smartwash.edu');
+  const [teacherPassword, setTeacherPassword] = useState('admin123');
+  const [authError, setAuthError] = useState('');
   const [students, setStudents] = useState([]);
   const [sessions, setSessions] = useState([]);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
+  const [isExiting, setIsExiting] = useState(false);
 
   const location = useLocation();
+
+  const handleExit = () => {
+    setIsExiting(true);
+    setTimeout(() => {
+      navigate('/');
+    }, 450);
+  };
+
+  const handleLogin = (e) => {
+    if (e) e.preventDefault();
+    if (!teacherEmail.trim()) {
+      setAuthError('Please enter your staff email address.');
+      return;
+    }
+    if (!teacherPassword || teacherPassword.length < 4) {
+      setAuthError('Password must be at least 4 characters.');
+      return;
+    }
+    setAuthError('');
+    setIsLoggingIn(true);
+    setTimeout(() => {
+      sessionStorage.setItem('smartwash_teacher_auth', 'true');
+      setIsAuthenticated(true);
+      setIsLoggingIn(false);
+    }, 600);
+  };
+
+  const handleSignOut = () => {
+    sessionStorage.removeItem('smartwash_teacher_auth');
+    setIsAuthenticated(false);
+  };
+
   const loadDashboardData = async () => {
-    const studentList = await getAllStudents();
-    const sessionList = await getAllSessions();
+    const rawStudentList = await getAllStudents();
+    const studentList = rawStudentList.filter(st => st.studentId !== 'GUEST' && !st.isGuest);
+    const rawSessionList = await getAllSessions();
+    // Rule 6 & Rule 5: Guest sessions AND dry test mode sessions are NOT counted in teacher analytics or the leaderboard
+    const sessionList = rawSessionList.filter(s => s.studentId !== 'GUEST' && !s.isGuest && s.mode !== 'dry');
     
     // Calculate scores for students based on recent sessions
     const studentMap = studentList.map(st => {
@@ -66,9 +338,9 @@ export function TeacherDashboardApp() {
       const latestSession = studentSessions[0];
       return {
         ...st,
-        score: latestSession ? latestSession.score : Math.floor(80 + Math.random() * 18),
-        streak: Math.floor(2 + Math.random() * 6),
-        grade: 'Excellent'
+        score: latestSession ? (latestSession.complianceScore || latestSession.score || 85) : 85,
+        streak: 3,
+        grade: 'Good'
       };
     });
 
@@ -77,72 +349,137 @@ export function TeacherDashboardApp() {
   };
 
   useEffect(() => {
-    loadDashboardData();
-  }, []);
-
-  const filteredStudents = students.filter(st =>
-    st.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    st.studentId.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+    if (isAuthenticated) {
+      loadDashboardData();
+    }
+  }, [isAuthenticated]);
 
   const avgClassScore = students.length > 0
     ? Math.round(students.reduce((acc, s) => acc + s.score, 0) / students.length)
     : 92;
 
+  if (isLoggingIn) {
+    return (
+      <LoadingPage
+        message="Logging in..."
+        duration={500}
+      />
+    );
+  }
+
+  if (isExiting) {
+    return (
+      <LoadingPage
+        message="Exiting..."
+        duration={400}
+      />
+    );
+  }
+
+  // Teacher Login Screen - Centered Sticker Card on Dot Grid Page
   if (!isAuthenticated) {
     return (
-      <div style={{
+      <div className="bg-dot-grid" style={{
         minHeight: '100vh',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        background: 'linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #090d16 100%)',
-        color: '#f8fafc',
-        fontFamily: "'Inter', sans-serif"
+        background: 'var(--background)',
+        color: 'var(--foreground)',
+        fontFamily: "'Plus Jakarta Sans', sans-serif",
+        position: 'relative',
+        padding: '24px',
+        overflow: 'hidden'
       }}>
-        {/* Floating background shapes */}
-        <div style={{ position: 'absolute', width: '300px', height: '300px', background: 'radial-gradient(circle, rgba(99,102,241,0.15) 0%, rgba(0,0,0,0) 70%)', top: '10%', left: '15%', borderRadius: '50%' }}></div>
-        <div style={{ position: 'absolute', width: '400px', height: '400px', background: 'radial-gradient(circle, rgba(16,185,129,0.1) 0%, rgba(0,0,0,0) 70%)', bottom: '5%', right: '10%', borderRadius: '50%' }}></div>
+        {/* Playful Confetti background elements */}
+        <Confetti />
 
-        {/* Glassmorphism Card */}
-        <div style={{
-          background: 'rgba(30, 41, 59, 0.45)',
-          backdropFilter: 'blur(16px)',
-          padding: '48px 40px',
-          borderRadius: '24px',
-          width: '420px',
-          border: '1px solid rgba(255, 255, 255, 0.1)',
-          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 20px rgba(99, 102, 241, 0.1)',
+        {/* Centered Sticker Card */}
+        <form onSubmit={handleLogin} style={{
+          background: '#FFFFFF',
+          padding: '44px 38px',
+          borderRadius: '28px',
+          width: '100%',
+          maxWidth: '440px',
+          border: '3px solid #1E293B',
+          boxShadow: '8px 8px 0px 0px #1E293B',
           zIndex: 10,
           display: 'flex',
           flexDirection: 'column',
-          alignItems: 'center'
+          alignItems: 'center',
+          boxSizing: 'border-box',
+          position: 'relative'
         }}>
-          {/* Logo/Icon */}
+          {/* Tilted Logo / Mark */}
           <div style={{
-            width: '64px',
-            height: '64px',
-            borderRadius: '16px',
-            background: 'linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%)',
+            width: '68px',
+            height: '68px',
+            borderRadius: '20px',
+            background: 'var(--accent)',
+            border: '2.5px solid #1E293B',
+            boxShadow: '4px 4px 0 0 #1E293B',
+            transform: 'rotate(-6deg)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            fontSize: '32px',
-            marginBottom: '24px',
-            boxShadow: '0 10px 25px -5px rgba(59, 130, 246, 0.4)'
+            fontSize: '34px',
+            marginBottom: '20px'
           }}>
             🎓
           </div>
           
-          <h2 style={{ margin: '0 0 8px 0', fontSize: '26px', fontWeight: 800, textAlign: 'center', background: 'linear-gradient(to right, #60a5fa, #c084fc)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+          <h2 style={{
+            margin: '0 0 6px 0',
+            fontSize: '28px',
+            fontWeight: 800,
+            textAlign: 'center',
+            color: '#1E293B',
+            fontFamily: 'Outfit, sans-serif'
+          }}>
             Teacher Portal
           </h2>
-          <p style={{ margin: '0 0 32px 0', color: '#94a3b8', fontSize: '14px', textAlign: 'center' }}>
-            Sign in to access handwashing compliance analytics
+
+          <p style={{
+            margin: '0 0 24px 0',
+            color: '#64748B',
+            fontSize: '14px',
+            textAlign: 'center',
+            fontWeight: 500,
+            lineHeight: 1.5
+          }}>
+            Enter staff credentials to access compliance analytics & student records
           </p>
 
-          <div style={{ width: '100%', marginBottom: '20px' }}>
-            <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#cbd5e1', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+          {authError && (
+            <div style={{
+              width: '100%',
+              padding: '12px 16px',
+              borderRadius: '12px',
+              background: '#FEE2E2',
+              border: '2px solid #1E293B',
+              color: '#1E293B',
+              fontSize: '13px',
+              fontWeight: 700,
+              marginBottom: '18px',
+              boxSizing: 'border-box',
+              boxShadow: '3px 3px 0 0 #1E293B'
+            }}>
+              ⚠️ {authError}
+            </div>
+          )}
+
+          {/* Email input following Input spec */}
+          <div style={{ width: '100%', marginBottom: '18px' }}>
+            <label style={{
+              display: 'block',
+              fontSize: '11px',
+              fontWeight: 800,
+              color: '#1E293B',
+              marginBottom: '6px',
+              textTransform: 'uppercase',
+              letterSpacing: '0.06em',
+              fontFamily: 'Outfit, sans-serif'
+            }}>
               Email Address
             </label>
             <input
@@ -154,125 +491,321 @@ export function TeacherDashboardApp() {
                 width: '100%',
                 padding: '14px 16px',
                 borderRadius: '12px',
-                border: '1px solid rgba(255, 255, 255, 0.1)',
-                background: 'rgba(15, 23, 42, 0.6)',
-                color: '#fff',
-                fontSize: '15px',
+                border: '2px solid #CBD5E1',
+                background: '#FFFFFF',
+                color: '#1E293B',
+                fontSize: '14px',
+                fontWeight: 600,
                 outline: 'none',
-                transition: 'all 0.2s ease',
+                transition: 'all 0.15s ease',
                 boxSizing: 'border-box'
               }}
-              onFocus={(e) => e.target.style.borderColor = '#6366f1'}
-              onBlur={(e) => e.target.style.borderColor = 'rgba(255, 255, 255, 0.1)'}
+              onFocus={(e) => {
+                e.target.style.borderColor = '#8B5CF6';
+                e.target.style.boxShadow = '4px 4px 0px 0px #8B5CF6';
+              }}
+              onBlur={(e) => {
+                e.target.style.borderColor = '#CBD5E1';
+                e.target.style.boxShadow = 'none';
+              }}
             />
           </div>
 
-          <div style={{ width: '100%', marginBottom: '32px' }}>
-            <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#cbd5e1', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+          {/* Password input following Input spec */}
+          <div style={{ width: '100%', marginBottom: '24px' }}>
+            <label style={{
+              display: 'block',
+              fontSize: '11px',
+              fontWeight: 800,
+              color: '#1E293B',
+              marginBottom: '6px',
+              textTransform: 'uppercase',
+              letterSpacing: '0.06em',
+              fontFamily: 'Outfit, sans-serif'
+            }}>
               Password
             </label>
             <input
               type="password"
+              value={teacherPassword}
+              onChange={(e) => setTeacherPassword(e.target.value)}
               placeholder="••••••••"
               style={{
                 width: '100%',
                 padding: '14px 16px',
                 borderRadius: '12px',
-                border: '1px solid rgba(255, 255, 255, 0.1)',
-                background: 'rgba(15, 23, 42, 0.6)',
-                color: '#fff',
-                fontSize: '15px',
+                border: '2px solid #CBD5E1',
+                background: '#FFFFFF',
+                color: '#1E293B',
+                fontSize: '14px',
+                fontWeight: 600,
                 outline: 'none',
-                transition: 'all 0.2s ease',
+                transition: 'all 0.15s ease',
                 boxSizing: 'border-box'
               }}
-              onFocus={(e) => e.target.style.borderColor = '#6366f1'}
-              onBlur={(e) => e.target.style.borderColor = 'rgba(255, 255, 255, 0.1)'}
+              onFocus={(e) => {
+                e.target.style.borderColor = '#8B5CF6';
+                e.target.style.boxShadow = '4px 4px 0px 0px #8B5CF6';
+              }}
+              onBlur={(e) => {
+                e.target.style.borderColor = '#CBD5E1';
+                e.target.style.boxShadow = 'none';
+              }}
             />
           </div>
 
+          {/* Violet Candy Button */}
           <button
-            onClick={() => setIsAuthenticated(true)}
+            type="submit"
             style={{
               width: '100%',
               padding: '14px',
-              borderRadius: '12px',
-              border: 'none',
-              background: 'linear-gradient(135deg, #3b82f6 0%, #6366f1 100%)',
-              color: '#fff',
+              borderRadius: '9999px',
+              border: '2.5px solid #1E293B',
+              background: '#8B5CF6',
+              color: '#FFFFFF',
               fontWeight: 800,
               fontSize: '15px',
               cursor: 'pointer',
-              transition: 'transform 0.1s ease, box-shadow 0.2s ease',
-              boxShadow: '0 4px 14px rgba(99, 102, 241, 0.4)'
+              boxShadow: '4px 4px 0px 0px #1E293B',
+              marginBottom: '16px',
+              fontFamily: 'Outfit, sans-serif',
+              transition: 'transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1)'
             }}
-            onMouseOver={(e) => { e.target.style.transform = 'translateY(-1px)'; e.target.style.boxShadow = '0 6px 20px rgba(99, 102, 241, 0.5)'; }}
-            onMouseOut={(e) => { e.target.style.transform = 'translateY(0)'; e.target.style.boxShadow = '0 4px 14px rgba(99, 102, 241, 0.4)'; }}
+            onMouseEnter={e => {
+              e.currentTarget.style.transform = 'translate(-2px, -2px)';
+              e.currentTarget.style.boxShadow = '6px 6px 0px 0px #1E293B';
+            }}
+            onMouseLeave={e => {
+              e.currentTarget.style.transform = 'none';
+              e.currentTarget.style.boxShadow = '4px 4px 0px 0px #1E293B';
+            }}
           >
             Authenticate ➔
           </button>
-        </div>
+
+          {/* Back to Portal Secondary Button */}
+          <button
+            type="button"
+            onClick={handleExit}
+            style={{
+              background: 'transparent',
+              border: '2px solid #1E293B',
+              color: '#1E293B',
+              fontSize: '13px',
+              fontWeight: 800,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '8px 16px',
+              borderRadius: '9999px',
+              transition: 'background 0.2s',
+              fontFamily: 'Outfit, sans-serif'
+            }}
+            onMouseEnter={e => e.currentTarget.style.background = '#FBBF24'}
+            onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+          >
+            <ArrowLeft size={14} strokeWidth={2.5} />
+            <span>Back to Mode Selection</span>
+          </button>
+        </form>
       </div>
     );
   }
 
   return (
-    <div style={{ width: '100%', minHeight: '100vh', background: 'linear-gradient(135deg, #090d16 0%, #0f172a 100%)', color: '#f8fafc', padding: '32px', fontFamily: "'Inter', sans-serif" }}>
-      {/* Header */}
-      <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px', borderBottom: '1px solid rgba(255,255,255,0.08)', paddingBottom: '20px' }}>
-        <div>
-          <span style={{ fontSize: '12px', fontWeight: 800, color: '#60a5fa', textTransform: 'uppercase' }}>
-            Rahul's Module Architecture
-          </span>
-          <h1 style={{ margin: '4px 0 0 0', fontSize: '28px', fontWeight: 800 }}>
-            Teacher Handwashing Analytics Dashboard
-          </h1>
-          {isMockFirebase && (
-            <div style={{ marginTop: '8px', padding: '4px 8px', background: '#f59e0b', color: '#fff', fontSize: '10px', fontWeight: 800, borderRadius: '4px', display: 'inline-block' }}>
-              [ENV: LOCAL DEMO MODE - PERSISTENCE EPHEMERAL]
+    <div className="bg-dot-grid" style={{
+      width: '100%',
+      minHeight: '100vh',
+      background: 'var(--background)',
+      color: 'var(--foreground)',
+      padding: '24px 32px',
+      fontFamily: "'Plus Jakarta Sans', sans-serif",
+      boxSizing: 'border-box'
+    }}>
+      {/* Ambient Playful Confetti */}
+      <Confetti />
+
+      <div style={{ maxWidth: '1200px', margin: '0 auto', position: 'relative', zIndex: 10 }}>
+        {/* Top Navigation Bar with tilted logo, bold links, violet pill CTA */}
+        <header style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          marginBottom: '28px',
+          background: '#FFFFFF',
+          padding: '16px 24px',
+          borderRadius: '24px',
+          border: '2.5px solid #1E293B',
+          boxShadow: '4px 4px 0px 0px #1E293B',
+          flexWrap: 'wrap',
+          gap: '16px'
+        }}>
+          {/* Logo & Portal Title */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+            <div style={{
+              width: '46px',
+              height: '46px',
+              borderRadius: '14px',
+              background: '#8B5CF6',
+              border: '2px solid #1E293B',
+              boxShadow: '3px 3px 0 0 #1E293B',
+              transform: 'rotate(-5deg)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '24px'
+            }}>
+              🎓
             </div>
-          )}
-        </div>
-
-        <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-          <div style={{ fontSize: '13px', color: '#94a3b8' }}>
-            Logged in as <strong style={{ color: '#ffffff' }}>{teacherEmail}</strong>
+            <div>
+              <span style={{ fontSize: '11px', fontWeight: 800, color: '#8B5CF6', textTransform: 'uppercase', letterSpacing: '0.04em', fontFamily: 'Outfit, sans-serif' }}>
+                Admin & Hygiene Portal
+              </span>
+              <h1 style={{ margin: '2px 0 0 0', fontSize: '20px', fontWeight: 800, color: '#1E293B', fontFamily: 'Outfit, sans-serif' }}>
+                Teacher Handwashing Analytics
+              </h1>
+              {isMockFirebase && (
+                <span style={{ marginTop: '4px', padding: '2px 6px', background: '#FEF3C7', border: '1px solid #1E293B', color: '#1E293B', fontSize: '9px', fontWeight: 800, borderRadius: '4px', display: 'inline-block' }}>
+                  [LOCAL DEMO PERSISTENCE]
+                </span>
+              )}
+            </div>
           </div>
-          <button
-            onClick={() => setIsAuthenticated(false)}
-            style={{ padding: '8px 16px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.15)', background: 'rgba(30, 41, 59, 0.6)', color: '#94a3b8', fontSize: '12px', cursor: 'pointer' }}
+
+          {/* Right Header Navigation & Actions */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+            <button
+              onClick={handleExit}
+              style={{
+                padding: '8px 16px',
+                borderRadius: '9999px',
+                border: '2px solid #1E293B',
+                background: '#FFFDF5',
+                color: '#1E293B',
+                fontSize: '12px',
+                fontWeight: 800,
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                boxShadow: '2px 2px 0 0 #1E293B',
+                fontFamily: 'Outfit, sans-serif'
+              }}
+              onMouseEnter={e => e.currentTarget.style.background = '#FBBF24'}
+              onMouseLeave={e => e.currentTarget.style.background = '#FFFDF5'}
+            >
+              <Home size={14} strokeWidth={2.5} />
+              <span>Modes</span>
+            </button>
+
+            <div style={{
+              fontSize: '12px',
+              color: '#1E293B',
+              background: '#F1F5F9',
+              padding: '6px 12px',
+              borderRadius: '9999px',
+              border: '1.5px solid #1E293B',
+              fontWeight: 700
+            }}>
+              <span>{teacherEmail}</span>
+            </div>
+
+            <button
+              onClick={handleSignOut}
+              style={{
+                padding: '8px 16px',
+                borderRadius: '9999px',
+                border: '2px solid #1E293B',
+                background: '#FEE2E2',
+                color: '#1E293B',
+                fontSize: '12px',
+                fontWeight: 800,
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                boxShadow: '2px 2px 0 0 #1E293B',
+                fontFamily: 'Outfit, sans-serif'
+              }}
+            >
+              <LogOut size={14} strokeWidth={2.5} />
+              <span>Sign Out</span>
+            </button>
+          </div>
+        </header>
+
+        {/* Tab Navigation Pill Strip */}
+        <nav style={{
+          display: 'flex',
+          gap: '12px',
+          marginBottom: '28px',
+          flexWrap: 'wrap'
+        }}>
+          <Link
+            to="/teacher"
+            style={{
+              textDecoration: 'none',
+              color: location.pathname === '/teacher' ? '#FFFFFF' : '#1E293B',
+              fontWeight: 800,
+              fontSize: '14px',
+              padding: '10px 20px',
+              borderRadius: '9999px',
+              background: location.pathname === '/teacher' ? '#8B5CF6' : '#FFFFFF',
+              border: '2px solid #1E293B',
+              boxShadow: location.pathname === '/teacher' ? '3px 3px 0 0 #1E293B' : '2px 2px 0 0 #CBD5E1',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              fontFamily: 'Outfit, sans-serif',
+              transition: 'transform 0.15s ease'
+            }}
           >
-            Sign Out
-          </button>
-        </div>
-      </header>
+            <BarChart3 size={16} strokeWidth={2.5} />
+            <span>Overview Analytics</span>
+          </Link>
 
-      {/* Navigation */}
-      <nav style={{ display: 'flex', gap: '16px', marginBottom: '32px', borderBottom: '1px solid rgba(255,255,255,0.08)', paddingBottom: '16px' }}>
-        <Link to="/teacher" style={{ textDecoration: 'none', color: location.pathname === '/teacher' ? '#3b82f6' : '#94a3b8', fontWeight: 600, fontSize: '14px', padding: '8px 16px', borderRadius: '8px', background: location.pathname === '/teacher' ? 'rgba(59, 130, 246, 0.1)' : 'transparent', transition: 'all 0.2s' }}>
-          Overview Analytics
-        </Link>
-        <Link to="/teacher/students" style={{ textDecoration: 'none', color: location.pathname.startsWith('/teacher/students') ? '#3b82f6' : '#94a3b8', fontWeight: 600, fontSize: '14px', padding: '8px 16px', borderRadius: '8px', background: location.pathname.startsWith('/teacher/students') ? 'rgba(59, 130, 246, 0.1)' : 'transparent', transition: 'all 0.2s' }}>
-          Student Management
-        </Link>
-      </nav>
+          <Link
+            to="/teacher/students"
+            style={{
+              textDecoration: 'none',
+              color: location.pathname.startsWith('/teacher/students') ? '#FFFFFF' : '#1E293B',
+              fontWeight: 800,
+              fontSize: '14px',
+              padding: '10px 20px',
+              borderRadius: '9999px',
+              background: location.pathname.startsWith('/teacher/students') ? '#8B5CF6' : '#FFFFFF',
+              border: '2px solid #1E293B',
+              boxShadow: location.pathname.startsWith('/teacher/students') ? '3px 3px 0 0 #1E293B' : '2px 2px 0 0 #CBD5E1',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              fontFamily: 'Outfit, sans-serif',
+              transition: 'transform 0.15s ease'
+            }}
+          >
+            <UserCheck size={16} strokeWidth={2.5} />
+            <span>Student Management</span>
+          </Link>
+        </nav>
 
-      {/* Routes */}
-      <Routes>
-        <Route path="/" element={
-          <OverviewDashboard 
-            students={students} 
-            sessions={sessions} 
-            searchTerm={searchTerm} 
-            setSearchTerm={setSearchTerm}
-            avgClassScore={avgClassScore}
-            filteredStudents={filteredStudents}
-          />
-        } />
-        <Route path="/students" element={<StudentManagementList students={students} refreshData={loadDashboardData} />} />
-        <Route path="/students/add" element={<StudentEnrollmentForm onEnrollmentSuccess={loadDashboardData} />} />
-        <Route path="/students/:studentId" element={<StudentProfile students={students} refreshData={loadDashboardData} />} />
-      </Routes>
+        {/* Routes Section */}
+        <Routes>
+          <Route path="/" element={
+            <OverviewDashboard 
+              students={students} 
+              sessions={sessions} 
+              avgClassScore={avgClassScore}
+            />
+          } />
+          <Route path="/students" element={<StudentManagementList students={students} refreshData={loadDashboardData} />} />
+          <Route path="/students/add" element={<StudentEnrollmentForm onEnrollmentSuccess={loadDashboardData} />} />
+          <Route path="/students/:studentId" element={<StudentProfile students={students} refreshData={loadDashboardData} />} />
+        </Routes>
+      </div>
     </div>
   );
 }
+
+export default TeacherDashboardApp;

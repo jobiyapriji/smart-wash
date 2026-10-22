@@ -1,43 +1,98 @@
 /**
- * SMART WASH — React Hook for YOLOv11 WHO Step Recognition (WebSocket Client)
- * Author: Jobiya (AI/Model Lead)
+ * SMART WASH — React Hook for Step Recognition (Strict Detection Gating)
  * 
- * Streams webcam frames, downscales them to 320x320, sends them to FastAPI via WS,
- * feeds results into StepRecognitionEngine, and returns active step & progress.
+ * Rules enforced:
+ * - Rule 1: Hand-presence gating from MediaPipe Hands.
+ * - Rule 2: Hand movement computed strictly from hand landmark displacement.
+ * - Rule 3: Strict 5-condition crediting (hands, stepMatch, confidence>=0.60, movement>=0.05, debounce>=8).
+ * - Rule 4: Explicit class mapping table.
+ * - Rule 5: No synthetic / forged step advancement or automatic timeouts.
+ * - Rule 9: Full Debug HUD telemetry behind ?debug=1 (handCount, movement, failing condition, FPS).
  */
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { StepRecognitionEngine, WHO_STEPS_INFO } from '../services/stepModelService.js';
+import { HANDWASH_CONFIG } from '../config/handwashConfig.js';
+
+// Helper to resolve the correct WebSocket endpoint dynamically across dev, Docker, and LAN kiosk setups
+export function getWebSocketEndpoint() {
+  if (typeof window === 'undefined') return 'ws://localhost:4550/ws_model';
+  if (import.meta.env?.VITE_WS_URL) return import.meta.env.VITE_WS_URL;
+  if (window.__SMARTWASH_CONFIG__?.wsUrl) return window.__SMARTWASH_CONFIG__.wsUrl;
+
+  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+  const hostname = window.location.hostname || 'localhost';
+  const port = window.location.port;
+
+  // Behind reverse proxy (port 80 or 443, standard production school deployment)
+  if (!port || port === '80' || port === '443') {
+    return `${protocol}//${window.location.host}/ws_model`;
+  }
+  // Standalone dev server (Vite on 3000, backend on 4550)
+  return `${protocol}//${hostname}:4550/ws_model`;
+}
 
 export function useStepRecognition({
   videoRef,
   enabled = true,
-  useMock = false,
-  confidenceThreshold = 0.65,
-  onStepCompleted = null
+  mode = HANDWASH_CONFIG.DETECTION_MODE || 'strict',
+  confidenceThreshold = null,
+  handState = null, // { handCount, handConfidence, handMovement, isHandsMoving, handsMissing, handsData }
+  onStepCompleted = null,
+  onFinishWashing = null
 } = {}) {
   const [activeStep, setActiveStep] = useState(1);
   const [stepName, setStepName] = useState(WHO_STEPS_INFO[1]?.name || 'Palm to Palm');
-  const [confidence, setConfidence] = useState(0.88);
+  const [confidence, setConfidence] = useState(0);
   const [progress, setProgress] = useState(0);
+  const [activeTimeMs, setActiveTimeMs] = useState(0);
+  const [elapsedSeconds, setElapsedSeconds] = useState('0.0');
+  const [statusReason, setStatusReason] = useState('No hands');
+  const [graceState, setGraceState] = useState('IDLE');
   const [isProcessing, setIsProcessing] = useState(false);
   const [isHandsMoving, setIsHandsMoving] = useState(false);
   const [completedSteps, setCompletedSteps] = useState([]);
   const [missedSteps, setMissedSteps] = useState([]);
-  
-  // Reconnect backoff state
-  const reconnectAttempts = useRef(0);
-  
+  const [handsMissing, setHandsMissing] = useState(false);
+
+  // FPS tracking
+  const fpsFramesRef = useRef([]);
+  const [fps, setFps] = useState(0);
+
+  const isDry = mode === 'dry';
+  const effectiveDebounce = isDry ? HANDWASH_CONFIG.DRY_DEBOUNCE_FRAMES : HANDWASH_CONFIG.DEBOUNCE_FRAMES;
+
   // Telemetry HUD State
   const [telemetry, setTelemetry] = useState({
     camActive: false,
-    leftHand: false,
-    rightHand: false,
+    mode,
+    handCount: 0,
+    handConfidence: 0,
+    handMovement: 0,
+    movementThreshold: HANDWASH_CONFIG.MOVEMENT_THRESHOLD || 0.05,
+    handsMissing: false,
     rawPrediction: 'None',
     rawConfidence: 0,
-    expectedStep: 'Step 1',
+    expectedStep: 'Step 1 (Palm to Palm)',
     debounceCount: 0,
-    requiredFrames: 8,
+    requiredFrames: effectiveDebounce,
+    failingReason: 'WAITING_FOR_CAMERA',
+    statusReason: 'No hands',
+    graceState: 'IDLE',
+    activeTimeMs: 0,
+    elapsedSeconds: '0.0',
+    geometryRulePassed: false,
+    geometryRuleName: null,
+    ruleConditions: {
+      handsPresent: false,
+      stepMatch: false,
+      confidenceCheck: false,
+      movementCheck: false,
+      debounceCheck: false,
+      geometryRulePassed: false,
+      geometryRuleName: null
+    },
+    fps: 0,
     serverStatus: 'CONNECTING'
   });
 
@@ -46,15 +101,24 @@ export function useStepRecognition({
   const intervalRef = useRef(null);
   const canvasRef = useRef(null);
   const ctxRef = useRef(null);
-  
+  const handStateRef = useRef(handState);
+
   const lastStepTimeRef = useRef(performance.now());
   const onStepCompletedRef = useRef(onStepCompleted);
+  const onFinishWashingRef = useRef(onFinishWashing);
+  const activeStepRef = useRef(activeStep);
 
   useEffect(() => {
+    handStateRef.current = handState;
+  }, [handState]);
+
+  useEffect(() => {
+    activeStepRef.current = activeStep;
     onStepCompletedRef.current = onStepCompleted;
+    onFinishWashingRef.current = onFinishWashing;
   });
 
-  // Initialize Canvas for downscaling
+  // Initialize Canvas for 320x320 streaming
   useEffect(() => {
     const canvas = document.createElement('canvas');
     canvas.width = 320;
@@ -63,15 +127,17 @@ export function useStepRecognition({
     ctxRef.current = canvas.getContext('2d', { willReadFrequently: true });
   }, []);
 
-  // Initialize StepRecognitionEngine
+  // Initialize StepRecognitionEngine with mode-aware config
   useEffect(() => {
     engineRef.current = new StepRecognitionEngine({
-      useMock,
-      confidenceThreshold
+      mode,
+      confidenceThreshold: confidenceThreshold ?? (mode === 'dry' ? HANDWASH_CONFIG.DRY_CONFIDENCE_THRESHOLD : HANDWASH_CONFIG.CONFIDENCE_THRESHOLD),
+      consecutiveFramesRequired: mode === 'dry' ? HANDWASH_CONFIG.DRY_DEBOUNCE_FRAMES : HANDWASH_CONFIG.DEBOUNCE_FRAMES,
+      movementThreshold: HANDWASH_CONFIG.MOVEMENT_THRESHOLD
     });
-  }, [useMock, confidenceThreshold]);
+  }, [mode, confidenceThreshold]);
 
-  // WebSocket Connection
+  // WebSocket Connection to Backend YOLO Model
   useEffect(() => {
     if (!enabled) {
       if (wsRef.current) {
@@ -84,10 +150,10 @@ export function useStepRecognition({
     }
 
     const connectWebSocket = () => {
-      const ws = new WebSocket('ws://localhost:4550/ws_model');
-      
+      const endpoint = getWebSocketEndpoint();
+      const ws = new WebSocket(endpoint);
+
       ws.onopen = () => {
-        console.log('[useStepRecognition] WebSocket Connected');
         setIsProcessing(true);
         setTelemetry(prev => ({ ...prev, serverStatus: 'CONNECTED' }));
       };
@@ -103,26 +169,21 @@ export function useStepRecognition({
         }
       };
 
-      ws.onerror = (err) => {
-        console.error('[useStepRecognition] WebSocket Error:', err);
+      ws.onerror = () => {
         setTelemetry(prev => ({ ...prev, serverStatus: 'ERROR' }));
       };
 
       ws.onclose = () => {
-        console.log('[useStepRecognition] WebSocket Disconnected. Reconnecting...');
         setIsProcessing(false);
         setTelemetry(prev => ({ ...prev, serverStatus: 'RECONNECTING' }));
         if (enabled) {
-          reconnectAttempts.current += 1;
-          const backoff = Math.min(10000, 1000 * Math.pow(1.5, reconnectAttempts.current));
-          setTimeout(connectWebSocket, backoff);
+          setTimeout(connectWebSocket, 2000);
         }
       };
 
       wsRef.current = ws;
     };
 
-    reconnectAttempts.current = 0;
     connectWebSocket();
 
     return () => {
@@ -133,45 +194,88 @@ export function useStepRecognition({
     };
   }, [enabled]);
 
+  // Main evaluation handler on each model prediction
   const handlePrediction = useCallback((prediction, timestamp) => {
     if (!engineRef.current) return;
-    
-    // For 13 classes, confidence > 0.18 represents strong active class alignment
-    const isMoving = prediction.class !== "background" && (prediction.confidence >= 0.18 || (prediction.top5 && Object.values(prediction.top5).some(c => c >= 0.18)));
+    const now = timestamp || performance.now();
+
+    // Calculate real FPS
+    const frameTimes = fpsFramesRef.current;
+    frameTimes.push(now);
+    while (frameTimes.length > 0 && frameTimes[0] < now - 1000) {
+      frameTimes.shift();
+    }
+    const currentFps = frameTimes.length;
+    setFps(currentFps);
+
+    // Retrieve current hand landmark data
+    const hands = handStateRef.current || {};
+    const handCount = hands.handCount ?? 0;
+    const handConfidence = hands.handConfidence ?? 0;
+    const handMovement = hands.handMovement ?? 0;
+    const isMoving = hands.isHandsMoving ?? false;
+    const handsMissingState = hands.handsMissing ?? (handCount === 0);
+
     setIsHandsMoving(isMoving);
+    setHandsMissing(handsMissingState);
 
-    // [HANDWASH_DEBUG] format
-    const expected = engineRef.current.mapStepToYoloClass(activeStep);
-    const expectedString = expected.join(' or ');
-    const frameStreak = engineRef.current.predictionHistory.filter(x => expected.includes(x)).length;
-    console.log(`[HANDWASH_DEBUG] target: ${expectedString} | raw_pred: ${prediction.class} | conf: ${(prediction.confidence || 0).toFixed(2)} | hands_visible: L:YES R:YES | frame_streak: ${frameStreak}/${engineRef.current.historyWindowSize}`);
+    // Strict or Dry Mode evaluation via StepRecognitionEngine
+    const result = engineRef.current.predict({
+      class: prediction.class || 'background',
+      confidence: prediction.confidence || 0,
+      handCount,
+      handConfidence,
+      handMovement,
+      handsData: hands.handsData || []
+    }, now);
 
-    setTelemetry(prev => ({
-      ...prev,
-      rawPrediction: prediction.class,
+    const currentTarget = activeStepRef.current;
+    const targetInfo = WHO_STEPS_INFO[currentTarget] || WHO_STEPS_INFO[1];
+
+    // Update Telemetry HUD
+    setTelemetry({
+      camActive: true,
+      mode: result.mode || mode,
+      handCount,
+      handConfidence,
+      handMovement,
+      movementThreshold: engineRef.current ? engineRef.current.movementThreshold : (HANDWASH_CONFIG.MOVEMENT_THRESHOLD || 0.05),
+      handsMissing: result.handsMissing,
+      rawPrediction: prediction.class || 'None',
       rawConfidence: prediction.confidence || 0,
-      expectedStep: expectedString,
-      debounceCount: frameStreak,
-      requiredFrames: engineRef.current.historyWindowSize,
-      leftHand: isMoving,
-      rightHand: isMoving,
+      expectedStep: `Step ${currentTarget} (${targetInfo.name})`,
+      debounceCount: result.debounceStreak,
+      requiredFrames: engineRef.current ? engineRef.current.debounceFramesRequired : effectiveDebounce,
+      failingReason: result.failingReason,
+      statusReason: result.statusReason,
+      graceState: result.graceState,
+      activeTimeMs: result.activeTimeMs,
+      elapsedSeconds: result.elapsedSeconds !== undefined ? result.elapsedSeconds.toFixed(1) : (result.activeTimeMs / 1000).toFixed(1),
+      ruleConditions: result.ruleConditions,
+      geometryRulePassed: result.geometryRulePassed,
+      geometryRuleName: result.geometryRuleName,
+      fps: currentFps,
       serverStatus: 'CONNECTED'
-    }));
+    });
 
-    const result = engineRef.current.predict(prediction, timestamp);
-    
-    if (result.smoothedStep > activeStep) {
-      const duration = performance.now() - lastStepTimeRef.current;
-      lastStepTimeRef.current = performance.now();
+    setActiveTimeMs(result.activeTimeMs || 0);
+    setElapsedSeconds(result.elapsedSeconds !== undefined ? result.elapsedSeconds.toFixed(1) : ((result.activeTimeMs || 0) / 1000).toFixed(1));
+    setStatusReason(result.statusReason || 'No hands');
+    setGraceState(result.graceState || 'IDLE');
+
+    // Check if step advanced
+    if (result.smoothedStep > currentTarget) {
+      const duration = now - lastStepTimeRef.current;
+      lastStepTimeRef.current = now;
       if (onStepCompletedRef.current) {
         onStepCompletedRef.current({
-          stepNumber: activeStep,
+          stepNumber: currentTarget,
           durationMs: duration,
-          avgConfidence: confidence,
+          avgConfidence: result.confidence,
           completed: true
         });
       }
-      setCompletedSteps(prev => [...prev, activeStep]);
+      setCompletedSteps(prev => [...prev, currentTarget]);
     }
 
     setActiveStep(result.smoothedStep);
@@ -180,15 +284,16 @@ export function useStepRecognition({
     setProgress(result.progressPercent);
     if (result.completedSteps) setCompletedSteps(result.completedSteps);
     if (result.missedSteps) setMissedSteps(result.missedSteps);
-  }, [activeStep, confidence]);
 
-  const prevFrameRef = useRef(null);
-  const stillDurationMsRef = useRef(0);
-  const lastStillReminderRef = useRef(0);
-  const motionHistoryRef = useRef([]);
-  const isMovingStateRef = useRef(false);
+    // Check if all 6 steps are complete
+    if (result.isFinished) {
+      if (onFinishWashingRef.current) {
+        onFinishWashingRef.current();
+      }
+    }
+  }, []);
 
-  // Frame Capture & Active Motion Monitoring Loop
+  // Frame Capture & WebSocket Streaming Loop
   const sendFrame = useCallback(() => {
     const video = videoRef?.current;
     const isVideoPlaying = video && !video.paused && !video.ended && video.readyState >= 2;
@@ -197,9 +302,7 @@ export function useStepRecognition({
       return;
     }
 
-    setTelemetry(prev => ({ ...prev, camActive: true }));
-
-    // Center-crop video to square (1:1 aspect ratio) to prevent unnatural squishing of hands
+    // Center-crop video to square (1:1 aspect ratio) for YOLO
     const vw = video.videoWidth || 640;
     const vh = video.videoHeight || 480;
     const cropSize = Math.min(vw, vh);
@@ -208,147 +311,56 @@ export function useStepRecognition({
 
     ctxRef.current.drawImage(video, sx, sy, cropSize, cropSize, 0, 0, 320, 320);
 
-    // Compute optical motion in lower 70% of frame (hand washing zone)
-    const imgData = ctxRef.current.getImageData(0, 0, 320, 320);
-    const data = imgData.data;
-    const prev = prevFrameRef.current;
-    let movedPixels = 0;
-    let totalSampled = 0;
-
-    if (prev) {
-      for (let y = 80; y < 310; y += 4) {
-        for (let x = 40; x < 280; x += 4) {
-          const idx = (y * 320 + x) * 4;
-          totalSampled++;
-          const diff = Math.abs(data[idx] - prev[idx]) +
-                       Math.abs(data[idx + 1] - prev[idx + 1]) +
-                       Math.abs(data[idx + 2] - prev[idx + 2]);
-          if (diff > 35) movedPixels++;
-        }
-      }
-    }
-    prevFrameRef.current = new Uint8Array(data);
-
-    const motionRatio = totalSampled > 0 ? (movedPixels / totalSampled) : 0;
-    
-    // Hysteresis smoothing window (600ms) to eliminate flickering
-    motionHistoryRef.current.push(motionRatio);
-    if (motionHistoryRef.current.length > 6) {
-      motionHistoryRef.current.shift();
-    }
-    const avgMotion = motionHistoryRef.current.reduce((a, b) => a + b, 0) / motionHistoryRef.current.length;
-
-    let stableMoving = isMovingStateRef.current;
-    if (!stableMoving && avgMotion >= 0.035) {
-      stableMoving = true;
-    } else if (stableMoving && avgMotion < 0.015) {
-      stableMoving = false;
-    }
-    isMovingStateRef.current = stableMoving;
-    setIsHandsMoving(stableMoving);
-
     const isWsConnected = wsRef.current && wsRef.current.readyState === WebSocket.OPEN;
-
     if (isWsConnected) {
-      // Send frame over WebSocket for live PyTorch YOLO inference
-      const dataUrl = canvasRef.current.toDataURL('image/jpeg', 0.6);
-      wsRef.current.send(dataUrl);
-    } else {
-      // Local Vision fallback: ONLY advance if the student is actively moving/rubbing their hands!
-      if (engineRef.current) {
-        const expectedClasses = engineRef.current.mapStepToYoloClass(activeStep);
-        if (stableMoving) {
-          stillDurationMsRef.current = 0;
-          const activePrediction = {
-            class: expectedClasses[0] || 'Step_1',
-            confidence: Math.min(0.98, 0.85 + avgMotion)
-          };
-          handlePrediction(activePrediction, performance.now());
-          setTelemetry(prev => ({
-            ...prev,
-            serverStatus: 'LOCAL VISION (HAND MOTION DETECTED)',
-            leftHand: true,
-            rightHand: true
-          }));
-        } else {
-          stillDurationMsRef.current += 100;
-          // Hands not moving: send background! Time freezes!
-          const stillPrediction = {
-            class: 'background',
-            confidence: 0.95
-          };
-          handlePrediction(stillPrediction, performance.now());
-          setTelemetry(prev => ({
-            ...prev,
-            serverStatus: 'WAITING FOR HAND MOVEMENT',
-            leftHand: false,
-            rightHand: false,
-            rawPrediction: 'background (HANDS STILL)'
-          }));
-
-          // Voice reminder after 4 seconds of stillness
-          const now = Date.now();
-          if (stillDurationMsRef.current >= 4000 && now - lastStillReminderRef.current > 6000) {
-            lastStillReminderRef.current = now;
-            if ('speechSynthesis' in window) {
-              const reminder = new SpeechSynthesisUtterance("Please keep rubbing your hands to complete this step.");
-              reminder.rate = 1.1;
-              window.speechSynthesis.speak(reminder);
-            }
+      if (typeof canvasRef.current.toBlob === 'function') {
+        canvasRef.current.toBlob((blob) => {
+          if (blob && wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+            wsRef.current.send(blob);
           }
-        }
+        }, 'image/jpeg', 0.6);
+      } else {
+        const dataUrl = canvasRef.current.toDataURL('image/jpeg', 0.6);
+        wsRef.current.send(dataUrl);
       }
+    } else {
+      // If server is not connected, feed idle background to engine so nothing runs
+      handlePrediction({ class: 'background', confidence: 1.0 });
     }
-  }, [enabled, videoRef, activeStep, handlePrediction]);
+  }, [videoRef, handlePrediction]);
 
-  // Set up interval for ~10fps transmission
+  // Frame send interval (~10 FPS)
   useEffect(() => {
     if (enabled) {
       intervalRef.current = setInterval(sendFrame, 100);
     } else {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-      }
+      if (intervalRef.current) clearInterval(intervalRef.current);
     }
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
   }, [enabled, sendFrame]);
 
+  // Debug-only skip step (gated behind ?debug=1)
   const skipStep = useCallback(() => {
     if (!engineRef.current) return;
-    const current = activeStep;
     const result = engineRef.current.skipStep();
-    const duration = performance.now() - lastStepTimeRef.current;
-    lastStepTimeRef.current = performance.now();
-
-    if (onStepCompletedRef.current) {
-      onStepCompletedRef.current({
-        stepNumber: current,
-        durationMs: duration,
-        avgConfidence: confidence || 0.92,
-        completed: true
-      });
-    }
-
     setActiveStep(result.smoothedStep);
-    setStepName(WHO_STEPS_INFO[result.smoothedStep]?.name || 'Completed');
+    setStepName(WHO_STEPS_INFO[result.smoothedStep]?.name || 'Unknown');
     setProgress(result.progressPercent);
-    if (result.completedSteps) setCompletedSteps([...result.completedSteps]);
-    if (result.missedSteps) setMissedSteps([...result.missedSteps]);
-    return result;
-  }, [activeStep, confidence]);
+    if (result.completedSteps) setCompletedSteps(result.completedSteps);
+    if (result.isFinished && onFinishWashingRef.current) {
+      onFinishWashingRef.current();
+    }
+  }, []);
 
   const jumpToStep = useCallback((stepNumber) => {
     if (!engineRef.current) return;
     const result = engineRef.current.jumpToStep(stepNumber);
-    lastStepTimeRef.current = performance.now();
     setActiveStep(result.smoothedStep);
     setStepName(WHO_STEPS_INFO[result.smoothedStep]?.name || 'Unknown');
     setProgress(result.progressPercent);
-    if (result.completedSteps) setCompletedSteps([...result.completedSteps]);
-    if (result.missedSteps) setMissedSteps([...result.missedSteps]);
-    return result;
+    if (result.completedSteps) setCompletedSteps(result.completedSteps);
   }, []);
 
   const resetTracker = useCallback(() => {
@@ -356,27 +368,43 @@ export function useStepRecognition({
       engineRef.current.reset();
     }
     setActiveStep(1);
-    setStepName(WHO_STEPS_INFO[1]?.name || 'Palm to Palm');
-    setConfidence(0.88);
     setProgress(0);
+    setActiveTimeMs(0);
+    setElapsedSeconds('0.0');
+    setStatusReason('No hands');
+    setGraceState('IDLE');
     setCompletedSteps([]);
     setMissedSteps([]);
-    lastStepTimeRef.current = performance.now();
   }, []);
+
+  const copyDebugLog = useCallback(() => {
+    if (engineRef.current) {
+      return engineRef.current.getDebugLog();
+    }
+    return JSON.stringify([telemetry], null, 2);
+  }, [telemetry]);
 
   return {
     activeStep,
     stepName,
     confidence,
     progress,
+    activeTimeMs,
+    elapsedSeconds,
+    statusReason,
+    graceState,
     isProcessing,
     isHandsMoving,
+    handsMissing,
     completedSteps,
     missedSteps,
+    telemetry,
+    fps,
+    resetTracker,
     skipStep,
     jumpToStep,
-    resetTracker,
-    stepsInfo: WHO_STEPS_INFO,
-    telemetry
+    copyDebugLog
   };
 }
+
+export default useStepRecognition;

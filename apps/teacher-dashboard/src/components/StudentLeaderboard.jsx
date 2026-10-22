@@ -1,8 +1,10 @@
 import React from 'react';
+import { Trophy, Flame, Medal } from 'lucide-react';
 
 /**
  * StudentLeaderboard Component
- * Renders ranked student compliance table sorted by handwashing score and streak.
+ * Renders ranked student compliance table with podium badges (Amber, Pink, Mint)
+ * and flame streak circles in the Playful Geometric style.
  */
 export function StudentLeaderboard({ students = [] }) {
   const defaultStudents = [
@@ -17,28 +19,55 @@ export function StudentLeaderboard({ students = [] }) {
     .slice()
     .sort((a, b) => (b.score || 0) - (a.score || 0));
 
+  // Podium medal colors: 1 = Amber, 2 = Pink, 3 = Mint
+  const getPodiumBadge = (rank) => {
+    if (rank === 1) return { bg: '#FBBF24', text: '#1E293B', label: '1st', icon: '🥇' };
+    if (rank === 2) return { bg: '#F472B6', text: '#1E293B', label: '2nd', icon: '🥈' };
+    if (rank === 3) return { bg: '#34D399', text: '#1E293B', label: '3rd', icon: '🥉' };
+    return { bg: '#F1F5F9', text: '#64748B', label: `#${rank}`, icon: null };
+  };
+
   return (
     <div style={{
-      background: 'rgba(30, 41, 59, 0.4)',
-      borderRadius: '16px',
+      background: '#FFFFFF',
+      borderRadius: '20px',
       padding: '24px',
-      border: '1px solid rgba(255, 255, 255, 0.08)',
-      boxShadow: '0 8px 32px rgba(0,0,0,0.2)'
+      border: '2.5px solid #1E293B',
+      boxShadow: '4px 4px 0px 0px #1E293B',
+      fontFamily: "'Plus Jakarta Sans', sans-serif"
     }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '10px' }}>
         <div>
-          <h3 style={{ margin: 0, fontSize: '18px', color: '#ffffff' }}>Student Compliance Leaderboard</h3>
-          <p style={{ margin: '2px 0 0 0', fontSize: '12px', color: '#94a3b8' }}>Ranked by Handwashing Score & Streak</p>
+          <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 800, color: '#1E293B', fontFamily: 'Outfit, sans-serif' }}>
+            Student Compliance Leaderboard
+          </h3>
+          <p style={{ margin: '2px 0 0 0', fontSize: '13px', color: '#64748B', fontWeight: 500 }}>
+            Ranked by Handwashing Score & Streak
+          </p>
         </div>
-        <span style={{ fontSize: '12px', color: '#fbbf24', background: 'rgba(251, 191, 36, 0.15)', padding: '4px 12px', borderRadius: '20px', fontWeight: 700 }}>
-          🏆 Top Performers
-        </span>
+        <div style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: '6px',
+          fontSize: '12px',
+          color: '#1E293B',
+          background: '#FEF3C7',
+          padding: '4px 12px',
+          borderRadius: '9999px',
+          fontWeight: 800,
+          border: '1.5px solid #1E293B',
+          boxShadow: '2px 2px 0px 0px #1E293B',
+          fontFamily: 'Outfit, sans-serif'
+        }}>
+          <Trophy size={14} strokeWidth={2.5} color="#1E293B" />
+          <span>Top Performers</span>
+        </div>
       </div>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
         {leaderboardData.map((st, index) => {
           const rank = index + 1;
-          const badgeColor = rank === 1 ? '#fbbf24' : rank === 2 ? '#94a3b8' : rank === 3 ? '#cd7f32' : '#64748b';
+          const badge = getPodiumBadge(rank);
 
           return (
             <div
@@ -48,35 +77,96 @@ export function StudentLeaderboard({ students = [] }) {
                 alignItems: 'center',
                 justifyContent: 'space-between',
                 padding: '12px 16px',
-                background: 'rgba(15, 23, 42, 0.6)',
-                borderRadius: '12px',
-                border: rank === 1 ? '1px solid rgba(251, 191, 36, 0.4)' : '1px solid rgba(255, 255, 255, 0.05)'
+                background: rank <= 3 ? '#FFFDF5' : '#FFFFFF',
+                borderRadius: '16px',
+                border: '2px solid #1E293B',
+                boxShadow: rank <= 3 ? '3px 3px 0px 0px #1E293B' : '2px 2px 0px 0px #E2E8F0',
+                transition: 'transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1)',
+                cursor: 'default'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.transform = 'translate(-2px, -2px)';
+                e.currentTarget.style.boxShadow = '5px 5px 0px 0px #1E293B';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = 'none';
+                e.currentTarget.style.boxShadow = rank <= 3 ? '3px 3px 0px 0px #1E293B' : '2px 2px 0px 0px #E2E8F0';
               }}
             >
+              {/* Rank & Student Info */}
               <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-                <span style={{ fontSize: '16px', fontWeight: 800, color: badgeColor, width: '24px', textAlign: 'center' }}>
-                  #{rank}
-                </span>
+                <div style={{
+                  width: '36px',
+                  height: '36px',
+                  borderRadius: '12px',
+                  background: badge.bg,
+                  border: '2px solid #1E293B',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontWeight: 900,
+                  fontSize: '13px',
+                  color: badge.text,
+                  boxShadow: '2px 2px 0px 0px #1E293B',
+                  fontFamily: 'Outfit, sans-serif',
+                  flexShrink: 0
+                }}>
+                  {badge.icon || badge.label}
+                </div>
                 <div>
-                  <div style={{ fontSize: '14px', fontWeight: 700, color: '#ffffff' }}>{st.name}</div>
-                  <div style={{ fontSize: '11px', color: '#94a3b8' }}>ID: {st.studentId}</div>
+                  <div style={{ fontSize: '15px', fontWeight: 800, color: '#1E293B', fontFamily: 'Outfit, sans-serif' }}>
+                    {st.name}
+                  </div>
+                  <div style={{ fontSize: '11px', color: '#64748B', fontWeight: 600 }}>
+                    ID: {st.studentId}
+                  </div>
                 </div>
               </div>
 
-              <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
-                <div style={{ textAlign: 'right' }}>
-                  <span style={{ fontSize: '12px', color: '#f59e0b', fontWeight: 700 }}>🔥 {st.streak} Streak</span>
-                </div>
+              {/* Streak & Score */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                {/* Flame Streak Circle Badge */}
                 <div style={{
-                  background: 'rgba(16, 185, 129, 0.15)',
-                  padding: '6px 14px',
-                  borderRadius: '10px',
-                  border: '1px solid rgba(52, 211, 153, 0.3)',
-                  fontWeight: 800,
-                  color: '#34d399',
-                  fontSize: '15px'
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  background: '#FEF3C7',
+                  border: '1.5px solid #1E293B',
+                  borderRadius: '9999px',
+                  padding: '4px 10px',
+                  boxShadow: '1.5px 1.5px 0px 0px #1E293B'
                 }}>
-                  {st.score} <span style={{ fontSize: '10px', color: '#94a3b8' }}>/ 100</span>
+                  <div style={{
+                    width: '18px',
+                    height: '18px',
+                    borderRadius: '50%',
+                    background: '#F59E0B',
+                    border: '1px solid #1E293B',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}>
+                    <Flame size={12} strokeWidth={2.5} color="#FFFFFF" fill="#FFFFFF" />
+                  </div>
+                  <span style={{ fontSize: '12px', color: '#1E293B', fontWeight: 800, fontFamily: 'Outfit, sans-serif' }}>
+                    {st.streak}
+                  </span>
+                </div>
+
+                {/* Score Sticker Badge */}
+                <div style={{
+                  background: '#D1FAE5',
+                  padding: '6px 14px',
+                  borderRadius: '12px',
+                  border: '2px solid #1E293B',
+                  fontWeight: 900,
+                  color: '#1E293B',
+                  fontSize: '15px',
+                  boxShadow: '2px 2px 0px 0px #1E293B',
+                  fontFamily: 'Outfit, sans-serif',
+                  whiteSpace: 'nowrap'
+                }}>
+                  {st.score} <span style={{ fontSize: '10px', color: '#64748B', fontWeight: 700 }}>/ 100</span>
                 </div>
               </div>
             </div>
@@ -86,3 +176,5 @@ export function StudentLeaderboard({ students = [] }) {
     </div>
   );
 }
+
+export default StudentLeaderboard;

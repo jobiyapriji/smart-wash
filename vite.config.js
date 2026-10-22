@@ -11,10 +11,25 @@ export default defineConfig({
     alias: {
       '@shared': path.resolve(__dirname, 'shared'),
       '@apps': path.resolve(__dirname, 'apps'),
+      '@src': path.resolve(__dirname, 'src'),
+      '@i18n': path.resolve(__dirname, 'src/i18n'),
+      '@services': path.resolve(__dirname, 'src/services'),
     }
   },
   server: {
     port: 3000
+  },
+  build: {
+    chunkSizeWarningLimit: 1500,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'vendor-react': ['react', 'react-dom', 'react-router-dom'],
+          'vendor-faceapi': ['@vladmandic/face-api'],
+          'vendor-mediapipe': ['@mediapipe/hands', '@mediapipe/camera_utils'],
+        }
+      }
+    }
   },
   test: {
     globals: true,

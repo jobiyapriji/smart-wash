@@ -1,0 +1,14 @@
+# Optional Docker Compose Override for GPU Acceleration
+# To enable NVIDIA GPU inference, rename this file to docker-compose.override.yml
+# and ensure the host has NVIDIA Drivers and NVIDIA Container Toolkit installed.
+version: '3.8'
+
+services:
+  backend:
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]

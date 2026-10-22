@@ -1,0 +1,298 @@
+/**
+ * Playful Geometric Design System — Design Tokens & Utilities
+ * "Stable Grid, Wild Decoration"
+ */
+
+:root {
+  /* Colors */
+  --background: #FFFDF5;
+  --foreground: #1E293B;
+  --muted: #F1F5F9;
+  --muted-foreground: #64748B;
+  --accent: #8B5CF6; /* Vivid Violet (Primary Brand) */
+  --accent-foreground: #FFFFFF;
+  --secondary: #F472B6; /* Hot Pink (Playful pop) */
+  --secondary-foreground: #1E293B;
+  --tertiary: #FBBF24; /* Amber / Yellow (Optimism) */
+  --tertiary-foreground: #1E293B;
+  --quaternary: #34D399; /* Mint / Emerald (Freshness) */
+  --quaternary-foreground: #1E293B;
+  --border: #E2E8F0;
+  --border-dark: #1E293B;
+  --input: #FFFFFF;
+  --card: #FFFFFF;
+  --ring: #8B5CF6;
+
+  /* Typography */
+  --font-heading: 'Outfit', 'Noto Sans Malayalam', 'Noto Sans Devanagari', system-ui, sans-serif;
+  --font-body: 'Plus Jakarta Sans', 'Noto Sans Malayalam', 'Noto Sans Devanagari', -apple-system, BlinkMacSystemFont, sans-serif;
+
+  /* Radii */
+  --radius-sm: 8px;
+  --radius-md: 16px;
+  --radius-lg: 24px;
+  --radius-full: 9999px;
+
+  /* Border */
+  --border-width: 2px;
+  --border-width-chunky: 3px;
+
+  /* Pop Shadows (Hard, no blur) */
+  --shadow-pop-sm: 2px 2px 0px 0px #1E293B;
+  --shadow-pop: 4px 4px 0px 0px #1E293B;
+  --shadow-pop-hover: 6px 6px 0px 0px #1E293B;
+  --shadow-pop-active: 2px 2px 0px 0px #1E293B;
+  --shadow-pop-lg: 8px 8px 0px 0px #1E293B;
+  --shadow-card-soft: 8px 8px 0px 0px #E2E8F0;
+  --shadow-card-pink: 8px 8px 0px 0px #F472B6;
+  --shadow-card-amber: 8px 8px 0px 0px #FBBF24;
+  --shadow-card-mint: 8px 8px 0px 0px #34D399;
+  --shadow-card-violet: 8px 8px 0px 0px #8B5CF6;
+
+  /* Animation Easing */
+  --ease-bounce: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --transition-bounce: all 300ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* Background Dot Grid */
+.bg-dot-grid {
+  background-color: var(--background);
+  background-image: radial-gradient(#CBD5E1 1.5px, transparent 1.5px);
+  background-size: 24px 24px;
+}
+
+.bg-dot-grid-dense {
+  background-color: var(--background);
+  background-image: radial-gradient(#CBD5E1 1.5px, transparent 1.5px);
+  background-size: 16px 16px;
+}
+
+/* Base Body Styles */
+body {
+  background-color: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-body);
+}
+
+/* Typography Helpers */
+h1, h2, h3, h4, h5, h6, .font-heading {
+  font-family: var(--font-heading);
+  font-weight: 800;
+  color: var(--foreground);
+}
+
+/* Hard Pop Shadow Utilities */
+.pop-shadow {
+  box-shadow: var(--shadow-pop);
+}
+
+.pop-shadow-sm {
+  box-shadow: var(--shadow-pop-sm);
+}
+
+.pop-shadow-lg {
+  box-shadow: var(--shadow-pop-lg);
+}
+
+.pop-shadow-soft {
+  box-shadow: var(--shadow-card-soft);
+}
+
+.pop-shadow-pink {
+  box-shadow: var(--shadow-card-pink);
+}
+
+.pop-shadow-amber {
+  box-shadow: var(--shadow-card-amber);
+}
+
+.pop-shadow-mint {
+  box-shadow: var(--shadow-card-mint);
+}
+
+.pop-shadow-violet {
+  box-shadow: var(--shadow-card-violet);
+}
+
+/* Primary Candy Button */
+.btn-candy-primary {
+  background-color: var(--accent);
+  color: #FFFFFF;
+  font-family: var(--font-heading);
+  font-weight: 700;
+  border: 2px solid var(--border-dark);
+  border-radius: var(--radius-full);
+  box-shadow: var(--shadow-pop);
+  transition: var(--transition-bounce);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 48px;
+  padding: 12px 28px;
+  text-decoration: none;
+}
+
+.btn-candy-primary:hover:not(:disabled) {
+  transform: translate(-2px, -2px);
+  box-shadow: var(--shadow-pop-hover);
+}
+
+.btn-candy-primary:active:not(:disabled) {
+  transform: translate(2px, 2px);
+  box-shadow: var(--shadow-pop-active);
+}
+
+/* Secondary Button */
+.btn-candy-secondary {
+  background-color: transparent;
+  color: var(--foreground);
+  font-family: var(--font-heading);
+  font-weight: 700;
+  border: 2px solid var(--border-dark);
+  border-radius: var(--radius-full);
+  box-shadow: none;
+  transition: var(--transition-bounce);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 48px;
+  padding: 12px 24px;
+  text-decoration: none;
+}
+
+.btn-candy-secondary:hover:not(:disabled) {
+  background-color: var(--tertiary);
+  transform: translate(-2px, -2px);
+  box-shadow: var(--shadow-pop);
+}
+
+.btn-candy-secondary:active:not(:disabled) {
+  transform: translate(2px, 2px);
+  box-shadow: var(--shadow-pop-active);
+}
+
+/* Sticker Card */
+.sticker-card {
+  background: var(--card);
+  border: 2px solid var(--border-dark);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card-soft);
+  transition: var(--transition-bounce);
+  position: relative;
+}
+
+.sticker-card-interactive:hover {
+  transform: rotate(-1deg) scale(1.02);
+  box-shadow: 10px 10px 0px 0px var(--border-dark);
+}
+
+/* Form Inputs */
+.playful-input {
+  background: #FFFFFF;
+  border: 2px solid #CBD5E1;
+  border-radius: var(--radius-md);
+  color: var(--foreground);
+  font-family: var(--font-body);
+  font-size: 15px;
+  font-weight: 500;
+  padding: 12px 16px;
+  outline: none;
+  transition: var(--transition-bounce);
+  box-shadow: 4px 4px 0px transparent;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.playful-input:focus {
+  border-color: var(--accent);
+  box-shadow: 4px 4px 0px 0px var(--accent);
+}
+
+.playful-label {
+  font-family: var(--font-heading);
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--foreground);
+  display: block;
+  margin-bottom: 6px;
+}
+
+/* Special Blob Radii */
+.rounded-blob-1 {
+  border-radius: 32px 32px 32px 8px;
+}
+
+.rounded-blob-2 {
+  border-radius: 8px 32px 32px 32px;
+}
+
+.rounded-arch {
+  border-radius: 9999px 9999px 16px 16px;
+}
+
+/* Micro Animations */
+@keyframes playfulWiggle {
+  0%, 100% { transform: rotate(0deg); }
+  25% { transform: rotate(3deg); }
+  75% { transform: rotate(-3deg); }
+}
+
+@keyframes playfulPopIn {
+  0% { transform: scale(0.85); opacity: 0; }
+  70% { transform: scale(1.04); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes playfulBob {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-8px); }
+}
+
+.animate-pop-in {
+  animation: playfulPopIn 350ms var(--ease-bounce) forwards;
+}
+
+.animate-bob {
+  animation: playfulBob 3s infinite ease-in-out;
+}
+
+.animate-wiggle-hover:hover {
+  animation: playfulWiggle 400ms ease-in-out;
+}
+
+/* Accessibility: Reduced Motion */
+@media (prefers-reduced-motion: reduce) {
+  *, ::before, ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  .sticker-card-interactive:hover {
+    transform: none !important;
+  }
+  .btn-candy-primary:hover,
+  .btn-candy-secondary:hover {
+    transform: none !important;
+  }
+}
+
+/* Mobile Optimizations */
+@media (max-width: 640px) {
+  .pop-shadow,
+  .pop-shadow-lg {
+    box-shadow: 2px 2px 0px 0px var(--border-dark) !important;
+  }
+  .sticker-card {
+    box-shadow: 4px 4px 0px 0px var(--border-dark) !important;
+  }
+  .hide-on-mobile {
+    display: none !important;
+  }
+}

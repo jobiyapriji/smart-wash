@@ -1,7 +1,11 @@
-import React from 'react';
+import React, { Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { LandingModeSelect } from './components/LandingModeSelect.jsx';
 import { StudentKioskApp } from '../apps/student-app/src/StudentApp.jsx';
 import { TeacherDashboardApp } from '../apps/teacher-dashboard/src/TeacherDashboardApp.jsx';
+import { LanguageProvider } from './i18n/LanguageContext.jsx';
+import { LoadingProvider } from './context/LoadingContext.jsx';
+import { LoadingPage } from './components/LoadingPage.jsx';
 
 class ErrorBoundary extends React.Component {
   constructor(props) {
@@ -28,38 +32,56 @@ class ErrorBoundary extends React.Component {
           justifyContent: 'center',
           padding: '40px',
           textAlign: 'center',
-          color: '#f8fafc'
+          background: 'var(--background)',
+          color: 'var(--foreground)'
         }}>
-          <div style={{ fontSize: '48px', marginBottom: '16px' }}>🛡️</div>
-          <h2 style={{ fontSize: '24px', fontWeight: 800, margin: '0 0 8px 0', color: '#f87171' }}>
-            Kiosk Vision Recovered
-          </h2>
-          <p style={{ color: '#94a3b8', fontSize: '14px', maxWidth: '440px', marginBottom: '16px' }}>
-            The AI engine encountered a temporary video frame glitch. Click below to restart your session smoothly.
-          </p>
-          {this.state.error && (
-            <div style={{ padding: '8px 16px', background: 'rgba(239, 68, 68, 0.15)', border: '1px solid #ef4444', borderRadius: '8px', color: '#fca5a5', fontSize: '12px', marginBottom: '20px', fontFamily: 'monospace' }}>
-              {this.state.error.message || String(this.state.error)}
+          <div className="sticker-card" style={{ maxWidth: '480px', padding: '36px 32px' }}>
+            <div style={{
+              width: '64px',
+              height: '64px',
+              borderRadius: '50%',
+              background: 'var(--secondary)',
+              border: '2px solid var(--border-dark)',
+              boxShadow: 'var(--shadow-pop)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '28px',
+              margin: '0 auto 16px'
+            }}>
+              🧼
             </div>
-          )}
-          <button
-            onClick={() => {
-              this.setState({ hasError: false, error: null });
-              window.location.reload();
-            }}
-            style={{
-              padding: '12px 28px',
-              borderRadius: '10px',
-              border: 'none',
-              background: 'linear-gradient(135deg, #10b981, #059669)',
-              color: '#fff',
-              fontWeight: 800,
-              fontSize: '14px',
-              cursor: 'pointer'
-            }}
-          >
-            Restart Kiosk ➔
-          </button>
+            <h2 style={{ fontSize: '24px', fontWeight: 800, margin: '0 0 8px 0', color: 'var(--foreground)' }}>
+              Kiosk Vision Recovered
+            </h2>
+            <p style={{ color: 'var(--muted-foreground)', fontSize: '14px', marginBottom: '20px', lineHeight: 1.5 }}>
+              The AI engine encountered a temporary video frame glitch. Click below to restart your session smoothly.
+            </p>
+            {this.state.error && (
+              <div style={{
+                padding: '10px 14px',
+                background: '#FEE2E2',
+                border: '2px solid #EF4444',
+                borderRadius: 'var(--radius-sm)',
+                color: '#991B1B',
+                fontSize: '12px',
+                marginBottom: '20px',
+                fontFamily: 'monospace'
+              }}>
+                {this.state.error.message || String(this.state.error)}
+              </div>
+            )}
+            <button
+              onClick={() => {
+                this.setState({ hasError: false, error: null });
+                window.location.reload();
+              }}
+              className="btn-candy-primary"
+              style={{ width: '100%' }}
+            >
+              Restart Kiosk ➔
+            </button>
+          </div>
         </div>
       );
     }
@@ -70,15 +92,24 @@ class ErrorBoundary extends React.Component {
 
 export default function App() {
   return (
-    <div style={{ minHeight: '100vh', background: 'linear-gradient(135deg, #0b0f19 0%, #111827 50%, #0f172a 100%)', color: '#f3f4f6' }}>
+    <div className="bg-dot-grid" style={{ minHeight: '100vh', color: 'var(--foreground)' }}>
       <ErrorBoundary>
-        <BrowserRouter>
-          <Routes>
-            <Route path="/student" element={<StudentKioskApp useMock={false} />} />
-            <Route path="/teacher/*" element={<TeacherDashboardApp />} />
-            <Route path="*" element={<Navigate to="/student" replace />} />
-          </Routes>
-        </BrowserRouter>
+        <LoadingProvider>
+          <LanguageProvider>
+            <BrowserRouter>
+              <Suspense fallback={<LoadingPage message="Loading SMART WASH..." submessage="Preparing views and assets..." />}>
+                <Routes>
+                  <Route path="/" element={<LandingModeSelect />} />
+                  <Route path="/student" element={<StudentKioskApp useMock={false} />} />
+                  <Route path="/wash" element={<StudentKioskApp useMock={false} />} />
+                  <Route path="/teacher/*" element={<TeacherDashboardApp />} />
+                  <Route path="/login" element={<TeacherDashboardApp />} />
+                  <Route path="*" element={<Navigate to="/" replace />} />
+                </Routes>
+              </Suspense>
+            </BrowserRouter>
+          </LanguageProvider>
+        </LoadingProvider>
       </ErrorBoundary>
     </div>
   );

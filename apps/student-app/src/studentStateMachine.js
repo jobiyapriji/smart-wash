@@ -7,8 +7,10 @@
  */
 
 export const KIOSK_STATES = {
+  LANGUAGE_SELECT: 'language_select',
   IDLE: 'idle',
   IDENTIFYING: 'identifying',
+  READY: 'ready',
   WASHING: 'washing',
   SCORING: 'scoring',
   FEEDBACK: 'feedback',
@@ -17,7 +19,7 @@ export const KIOSK_STATES = {
 };
 
 export const INITIAL_KIOSK_STATE = {
-  currentState: KIOSK_STATES.IDLE,
+  currentState: KIOSK_STATES.LANGUAGE_SELECT,
   student: null,          // { studentId, name, confidence }
   sessionId: null,
   completedSteps: [],     // Array of { stepNumber, durationMs, avgConfidence, completed }
@@ -39,9 +41,16 @@ export function kioskReducer(state, action) {
     case 'STUDENT_IDENTIFIED':
       return {
         ...state,
-        currentState: KIOSK_STATES.WASHING,
+        currentState: KIOSK_STATES.READY,
         student: action.payload.student,
         sessionId: action.payload.sessionId || `session_${Date.now()}`
+      };
+
+    case 'START_WASHING':
+      return {
+        ...state,
+        currentState: KIOSK_STATES.WASHING,
+        startTime: state.startTime || Date.now()
       };
 
     case 'IDENTIFICATION_FAILED':
@@ -94,9 +103,22 @@ export function kioskReducer(state, action) {
         completedSteps: action.payload.steps || state.completedSteps
       };
 
+    case 'SELECT_LANGUAGE':
+      return {
+        ...state,
+        currentState: KIOSK_STATES.IDLE
+      };
+
+    case 'OPEN_LANGUAGE_SELECT':
+      return {
+        ...state,
+        currentState: KIOSK_STATES.LANGUAGE_SELECT
+      };
+
     case 'RESET_TO_IDLE':
       return {
-        ...INITIAL_KIOSK_STATE
+        ...INITIAL_KIOSK_STATE,
+        currentState: KIOSK_STATES.IDLE
       };
 
     default:

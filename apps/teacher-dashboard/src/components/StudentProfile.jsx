@@ -3,8 +3,9 @@ import { useParams, Link } from 'react-router-dom';
 import * as faceapi from '@vladmandic/face-api';
 import { updateStudent } from '../../../../shared/services/studentService.js';
 import { getStudentSessions } from '../../../../shared/services/sessionService.js';
+import { ArrowLeft, Camera, RefreshCw, Check, AlertCircle, Flame, Award, Calendar } from 'lucide-react';
 
-export function StudentProfile({ students, refreshData }) {
+export function StudentProfile({ students = [], refreshData }) {
   const { studentId } = useParams();
   const student = students.find(s => s.studentId === studentId);
   
@@ -27,7 +28,22 @@ export function StudentProfile({ students, refreshData }) {
   }, [student, studentId]);
 
   if (!student) {
-    return <div style={{ color: '#f8fafc' }}>Student not found.</div>;
+    return (
+      <div style={{
+        background: '#FFFFFF',
+        borderRadius: '20px',
+        padding: '32px',
+        border: '2px solid #1E293B',
+        boxShadow: '4px 4px 0px 0px #1E293B',
+        textAlign: 'center',
+        fontFamily: 'Outfit, sans-serif'
+      }}>
+        <h3 style={{ margin: 0, fontSize: '20px', color: '#1E293B' }}>Student not found.</h3>
+        <Link to="/teacher/students" style={{ color: '#8B5CF6', fontWeight: 800, marginTop: '8px', display: 'inline-block' }}>
+          ← Back to Student Roster
+        </Link>
+      </div>
+    );
   }
 
   const startCamera = async () => {
@@ -109,109 +125,378 @@ export function StudentProfile({ students, refreshData }) {
   const avgScore = sessions.length > 0 ? Math.round(sessions.reduce((acc, s) => acc + s.score, 0) / sessions.length) : 'N/A';
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '24px' }}>
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '24px', fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
       
-      {/* Left Column: Profile Card */}
-      <div style={{ background: 'rgba(30, 41, 59, 0.4)', borderRadius: '16px', padding: '24px', border: '1px solid rgba(255,255,255,0.08)' }}>
+      {/* Left Column: Profile Sticker Card */}
+      <div style={{
+        background: '#FFFFFF',
+        borderRadius: '24px',
+        padding: '28px',
+        border: '2.5px solid #1E293B',
+        boxShadow: '4px 4px 0px 0px #1E293B',
+        display: 'flex',
+        flexDirection: 'column'
+      }}>
+        <div style={{ marginBottom: '16px' }}>
+          <Link
+            to="/teacher/students"
+            style={{
+              padding: '6px 14px',
+              borderRadius: '9999px',
+              border: '2px solid #1E293B',
+              background: '#FFFDF5',
+              color: '#1E293B',
+              fontSize: '12px',
+              fontWeight: 800,
+              textDecoration: 'none',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              boxShadow: '2px 2px 0 0 #1E293B',
+              fontFamily: 'Outfit, sans-serif'
+            }}
+          >
+            <ArrowLeft size={14} strokeWidth={2.5} />
+            <span>Back to Roster</span>
+          </Link>
+        </div>
+
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', marginBottom: '24px' }}>
           {student.photoUrl ? (
-             <img src={student.photoUrl} alt={student.name} style={{ width: '120px', height: '120px', borderRadius: '50%', objectFit: 'cover', marginBottom: '16px', border: '4px solid rgba(255,255,255,0.1)' }} />
+            <img
+              src={student.photoUrl}
+              alt={student.name}
+              style={{
+                width: '110px',
+                height: '110px',
+                borderRadius: '50%',
+                objectFit: 'cover',
+                marginBottom: '14px',
+                border: '3px solid #1E293B',
+                boxShadow: '3px 3px 0 0 #1E293B'
+              }}
+            />
           ) : (
-            <div style={{ width: '120px', height: '120px', borderRadius: '50%', background: '#3b82f6', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '48px', fontWeight: 800, marginBottom: '16px' }}>
+            <div style={{
+              width: '110px',
+              height: '110px',
+              borderRadius: '50%',
+              background: '#8B5CF6',
+              border: '3px solid #1E293B',
+              boxShadow: '3px 3px 0 0 #1E293B',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '44px',
+              fontWeight: 900,
+              color: '#FFFFFF',
+              marginBottom: '14px',
+              fontFamily: 'Outfit, sans-serif'
+            }}>
               {student.name.charAt(0)}
             </div>
           )}
-          <h2 style={{ margin: 0, fontSize: '22px', fontWeight: 800 }}>{student.name}</h2>
-          <p style={{ margin: '4px 0 0 0', color: '#60a5fa', fontWeight: 600 }}>{student.studentId}</p>
+
+          <h2 style={{ margin: 0, fontSize: '24px', fontWeight: 800, color: '#1E293B', fontFamily: 'Outfit, sans-serif' }}>
+            {student.name}
+          </h2>
+          <p style={{ margin: '4px 0 0 0', color: '#8B5CF6', fontWeight: 800, fontFamily: 'Outfit, monospace, sans-serif' }}>
+            {student.studentId}
+          </p>
+
           <div style={{ marginTop: '12px', display: 'flex', gap: '8px' }}>
-            <span style={{ background: 'rgba(255,255,255,0.1)', padding: '4px 12px', borderRadius: '20px', fontSize: '12px' }}>{student.className}</span>
-            <span style={{ background: 'rgba(255,255,255,0.1)', padding: '4px 12px', borderRadius: '20px', fontSize: '12px' }}>{student.section}</span>
+            <span style={{
+              background: '#FEF3C7',
+              border: '1.5px solid #1E293B',
+              padding: '4px 12px',
+              borderRadius: '9999px',
+              fontSize: '11px',
+              fontWeight: 800,
+              color: '#1E293B',
+              fontFamily: 'Outfit, sans-serif'
+            }}>
+              {student.className || 'Grade 5'}
+            </span>
+            <span style={{
+              background: '#D1FAE5',
+              border: '1.5px solid #1E293B',
+              padding: '4px 12px',
+              borderRadius: '9999px',
+              fontSize: '11px',
+              fontWeight: 800,
+              color: '#1E293B',
+              fontFamily: 'Outfit, sans-serif'
+            }}>
+              Sec {student.section || 'A'}
+            </span>
           </div>
         </div>
 
-        {/* Re-enrollment Section */}
-        <div style={{ borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: '20px' }}>
-          <h3 style={{ margin: '0 0 16px 0', fontSize: '14px', color: '#94a3b8' }}>BIOMETRIC DATA</h3>
+        {/* Biometric Re-enrollment Section */}
+        <div style={{ borderTop: '2px solid #E2E8F0', paddingTop: '20px', marginTop: 'auto' }}>
+          <h3 style={{ margin: '0 0 14px 0', fontSize: '12px', color: '#64748B', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em', fontFamily: 'Outfit, sans-serif' }}>
+            BIOMETRIC FACE DATA
+          </h3>
           
           {!isReEnrolling ? (
-            <button onClick={startCamera} style={{ width: '100%', padding: '12px', borderRadius: '8px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.2)', color: '#fff', cursor: 'pointer' }}>
-              🔄 Re-enroll Face Descriptor
+            <button
+              onClick={startCamera}
+              style={{
+                width: '100%',
+                padding: '12px',
+                borderRadius: '12px',
+                background: '#FFFDF5',
+                border: '2px solid #1E293B',
+                boxShadow: '3px 3px 0 0 #1E293B',
+                color: '#1E293B',
+                fontWeight: 800,
+                fontSize: '13px',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px',
+                fontFamily: 'Outfit, sans-serif'
+              }}
+            >
+              <RefreshCw size={15} strokeWidth={2.5} />
+              <span>Re-enroll Face Descriptor</span>
             </button>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              <div style={{ background: '#000', borderRadius: '8px', overflow: 'hidden', position: 'relative', width: '100%', aspectRatio: '4/3' }}>
-                <video ref={videoRef} autoPlay playsInline muted style={{ display: stream && !capturedPhoto ? 'block' : 'none', width: '100%', height: '100%', objectFit: 'cover' }} />
-                {capturedPhoto && <img src={capturedPhoto} alt="Captured" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />}
+              <div style={{
+                background: '#090D16',
+                borderRadius: '16px 16px 16px 4px',
+                overflow: 'hidden',
+                position: 'relative',
+                width: '100%',
+                aspectRatio: '4/3',
+                border: '2.5px solid #1E293B',
+                boxShadow: '3px 3px 0 0 #1E293B'
+              }}>
+                <video
+                  ref={videoRef}
+                  autoPlay
+                  playsInline
+                  muted
+                  style={{
+                    display: stream && !capturedPhoto ? 'block' : 'none',
+                    width: '100%',
+                    height: '100%',
+                    objectFit: 'cover'
+                  }}
+                />
+                {capturedPhoto && (
+                  <img src={capturedPhoto} alt="Captured" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                )}
                 <canvas ref={canvasRef} style={{ display: 'none' }} />
               </div>
               
-              {error && <div style={{ color: '#f87171', fontSize: '12px' }}>{error}</div>}
+              {error && (
+                <div style={{ color: '#DC2626', fontSize: '12px', fontWeight: 700 }}>
+                  ⚠️ {error}
+                </div>
+              )}
               
               {stream && !capturedPhoto && (
-                <button onClick={captureAndExtract} disabled={isProcessing} style={{ padding: '8px', background: '#3b82f6', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer' }}>
-                  {isProcessing ? 'Analyzing...' : 'Capture'}
+                <button
+                  onClick={captureAndExtract}
+                  disabled={isProcessing}
+                  style={{
+                    padding: '10px',
+                    background: '#34D399',
+                    color: '#1E293B',
+                    border: '2px solid #1E293B',
+                    borderRadius: '12px',
+                    fontWeight: 800,
+                    cursor: 'pointer',
+                    boxShadow: '2px 2px 0 0 #1E293B',
+                    fontFamily: 'Outfit, sans-serif'
+                  }}
+                >
+                  {isProcessing ? 'Analyzing Face...' : '📸 Capture Face'}
                 </button>
               )}
               
               {capturedPhoto && (
                 <div style={{ display: 'flex', gap: '8px' }}>
-                  <button onClick={saveReEnrollment} disabled={isProcessing} style={{ flex: 1, padding: '8px', background: '#10b981', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer' }}>
-                    Save
+                  <button
+                    onClick={saveReEnrollment}
+                    disabled={isProcessing}
+                    style={{
+                      flex: 1,
+                      padding: '10px',
+                      background: '#8B5CF6',
+                      color: '#FFFFFF',
+                      border: '2px solid #1E293B',
+                      borderRadius: '12px',
+                      fontWeight: 800,
+                      cursor: 'pointer',
+                      boxShadow: '2px 2px 0 0 #1E293B',
+                      fontFamily: 'Outfit, sans-serif'
+                    }}
+                  >
+                    Save Descriptor
                   </button>
-                  <button onClick={startCamera} disabled={isProcessing} style={{ padding: '8px', background: 'rgba(255,255,255,0.1)', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer' }}>
+                  <button
+                    onClick={startCamera}
+                    disabled={isProcessing}
+                    style={{
+                      padding: '10px 14px',
+                      background: '#FFFDF5',
+                      color: '#1E293B',
+                      border: '2px solid #1E293B',
+                      borderRadius: '12px',
+                      fontWeight: 800,
+                      cursor: 'pointer',
+                      boxShadow: '2px 2px 0 0 #1E293B',
+                      fontFamily: 'Outfit, sans-serif'
+                    }}
+                  >
                     Retake
                   </button>
                 </div>
               )}
             </div>
           )}
-          {success && <div style={{ color: '#34d399', fontSize: '12px', marginTop: '8px' }}>Face updated successfully!</div>}
+          {success && (
+            <div style={{
+              color: '#059669',
+              fontSize: '12px',
+              fontWeight: 800,
+              marginTop: '10px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px'
+            }}>
+              <Check size={14} strokeWidth={3} />
+              <span>Face updated successfully!</span>
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Right Column: Stats & Sessions */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px' }}>
-          <div style={{ background: 'rgba(30, 41, 59, 0.4)', borderRadius: '16px', padding: '20px', border: '1px solid rgba(255,255,255,0.08)' }}>
-            <div style={{ fontSize: '12px', color: '#94a3b8' }}>Average Score</div>
-            <div style={{ fontSize: '28px', fontWeight: 800, color: '#34d399', marginTop: '4px' }}>{avgScore}</div>
+      {/* Right Column: Stats & Session History */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+        {/* Stat Chips */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '14px' }}>
+          <div style={{
+            background: '#FFFFFF',
+            borderRadius: '18px',
+            padding: '18px',
+            border: '2px solid #1E293B',
+            boxShadow: '3px 3px 0 0 #1E293B'
+          }}>
+            <div style={{ fontSize: '11px', color: '#64748B', fontWeight: 800, textTransform: 'uppercase', fontFamily: 'Outfit, sans-serif' }}>
+              Average Score
+            </div>
+            <div style={{ fontSize: '28px', fontWeight: 900, color: '#1E293B', marginTop: '4px', fontFamily: 'Outfit, sans-serif' }}>
+              {avgScore}
+            </div>
           </div>
-          <div style={{ background: 'rgba(30, 41, 59, 0.4)', borderRadius: '16px', padding: '20px', border: '1px solid rgba(255,255,255,0.08)' }}>
-            <div style={{ fontSize: '12px', color: '#94a3b8' }}>Total Sessions</div>
-            <div style={{ fontSize: '28px', fontWeight: 800, color: '#60a5fa', marginTop: '4px' }}>{sessions.length}</div>
+
+          <div style={{
+            background: '#FFFFFF',
+            borderRadius: '18px',
+            padding: '18px',
+            border: '2px solid #1E293B',
+            boxShadow: '3px 3px 0 0 #1E293B'
+          }}>
+            <div style={{ fontSize: '11px', color: '#64748B', fontWeight: 800, textTransform: 'uppercase', fontFamily: 'Outfit, sans-serif' }}>
+              Total Sessions
+            </div>
+            <div style={{ fontSize: '28px', fontWeight: 900, color: '#8B5CF6', marginTop: '4px', fontFamily: 'Outfit, sans-serif' }}>
+              {sessions.length}
+            </div>
           </div>
-          <div style={{ background: 'rgba(30, 41, 59, 0.4)', borderRadius: '16px', padding: '20px', border: '1px solid rgba(255,255,255,0.08)' }}>
-            <div style={{ fontSize: '12px', color: '#94a3b8' }}>Current Streak</div>
-            <div style={{ fontSize: '28px', fontWeight: 800, color: '#fbbf24', marginTop: '4px' }}>{student.streak || 0}</div>
+
+          <div style={{
+            background: '#FFFFFF',
+            borderRadius: '18px',
+            padding: '18px',
+            border: '2px solid #1E293B',
+            boxShadow: '3px 3px 0 0 #1E293B'
+          }}>
+            <div style={{ fontSize: '11px', color: '#64748B', fontWeight: 800, textTransform: 'uppercase', fontFamily: 'Outfit, sans-serif' }}>
+              Current Streak
+            </div>
+            <div style={{ fontSize: '28px', fontWeight: 900, color: '#F59E0B', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '6px', fontFamily: 'Outfit, sans-serif' }}>
+              <span>{student.streak || 0}</span>
+              <Flame size={22} color="#F59E0B" fill="#F59E0B" />
+            </div>
           </div>
         </div>
 
-        <div style={{ background: 'rgba(30, 41, 59, 0.4)', borderRadius: '16px', padding: '24px', border: '1px solid rgba(255,255,255,0.08)', flex: 1 }}>
-          <h3 style={{ margin: '0 0 16px 0', fontSize: '16px' }}>Session History</h3>
+        {/* Sessions Table Sticker Card */}
+        <div style={{
+          background: '#FFFFFF',
+          borderRadius: '20px',
+          padding: '24px',
+          border: '2.5px solid #1E293B',
+          boxShadow: '4px 4px 0 0 #1E293B',
+          flex: 1
+        }}>
+          <h3 style={{ margin: '0 0 16px 0', fontSize: '18px', fontWeight: 800, color: '#1E293B', fontFamily: 'Outfit, sans-serif' }}>
+            Session History
+          </h3>
+          
           {sessions.length > 0 ? (
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
-              <thead>
-                <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.1)', color: '#94a3b8', textAlign: 'left' }}>
-                  <th style={{ padding: '12px' }}>Date</th>
-                  <th style={{ padding: '12px' }}>Score</th>
-                  <th style={{ padding: '12px' }}>Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {sessions.map(s => (
-                  <tr key={s.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-                    <td style={{ padding: '12px', color: '#cbd5e1' }}>{new Date(s.timestamp?.seconds ? s.timestamp.seconds * 1000 : s.timestamp).toLocaleDateString()}</td>
-                    <td style={{ padding: '12px', fontWeight: 700, color: s.score >= 80 ? '#34d399' : '#fbbf24' }}>{s.score}</td>
-                    <td style={{ padding: '12px' }}>{s.status}</td>
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
+                <thead>
+                  <tr style={{ borderBottom: '2px solid #1E293B', background: '#FFFDF5', color: '#1E293B', textAlign: 'left' }}>
+                    <th style={{ padding: '10px 14px', fontWeight: 800, fontFamily: 'Outfit, sans-serif' }}>Date</th>
+                    <th style={{ padding: '10px 14px', fontWeight: 800, fontFamily: 'Outfit, sans-serif' }}>Score</th>
+                    <th style={{ padding: '10px 14px', fontWeight: 800, fontFamily: 'Outfit, sans-serif' }}>Status</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {sessions.map(s => (
+                    <tr
+                      key={s.id}
+                      style={{ borderBottom: '1px solid #E2E8F0', transition: 'background 0.15s ease' }}
+                      onMouseEnter={e => e.currentTarget.style.background = '#F8FAFC'}
+                      onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                    >
+                      <td style={{ padding: '12px 14px', color: '#1E293B', fontWeight: 600 }}>
+                        {new Date(s.timestamp?.seconds ? s.timestamp.seconds * 1000 : s.timestamp).toLocaleDateString()}
+                      </td>
+                      <td style={{ padding: '12px 14px', fontWeight: 800, color: '#1E293B', fontFamily: 'Outfit, sans-serif' }}>
+                        <span style={{
+                          background: s.score >= 80 ? '#D1FAE5' : '#FEF3C7',
+                          padding: '3px 10px',
+                          borderRadius: '9999px',
+                          border: '1.5px solid #1E293B'
+                        }}>
+                          {s.score} / 100
+                        </span>
+                      </td>
+                      <td style={{ padding: '12px 14px' }}>
+                        <span style={{
+                          background: '#F1F5F9',
+                          color: '#64748B',
+                          padding: '3px 8px',
+                          borderRadius: '6px',
+                          fontSize: '11px',
+                          fontWeight: 700
+                        }}>
+                          {s.status}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           ) : (
-            <div style={{ color: '#94a3b8', fontSize: '14px' }}>No sessions recorded yet.</div>
+            <div style={{ color: '#64748B', fontSize: '14px', fontWeight: 600, padding: '20px 0', textAlign: 'center' }}>
+              No sessions recorded yet.
+            </div>
           )}
         </div>
       </div>
     </div>
   );
 }
+
+export default StudentProfile;

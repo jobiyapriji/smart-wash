@@ -1,10 +1,22 @@
-from fastapi import FastAPI, WebSocket
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.concurrency import run_in_threadpool
 import asyncio
 import cv2
 import numpy as np
 import base64
 import time
+import os
+import logging
+
+# Configure structured logging
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s"
+)
+logger = logging.getLogger("smartwash-backend")
+
+START_TIME = time.time()
 
 try:
     from .app import inferance
@@ -13,13 +25,23 @@ except (ImportError, ValueError):
     from app import inferance
     from utils.frame_combiner import combine_frames
 
-app = FastAPI()
+app = FastAPI(
+    title="SMART WASH AI Classification Engine",
+    description="Low-latency YOLOv11 step classification server for touchless school handwashing kiosks",
+    version="1.0.0"
+)
 
+# Load inference model
+logger.info("Initializing YOLO inference engine...")
 infr = inferance()
+logger.info(f"Model loaded successfully on device: {infr.device}")
+
+allowed_origins_env = os.getenv("CORS_ORIGINS", "*")
+origins = [origin.strip() for origin in allowed_origins_env.split(",") if origin.strip()]
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=origins if origins else ["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -28,39 +50,82 @@ app.add_middleware(
 @app.websocket("/ws_model")
 async def websocket_endpoint(websocket: WebSocket):
     await websocket.accept()
+    client_host = websocket.client.host if websocket.client else "unknown"
+    logger.info(f"Kiosk client connected from {client_host}")
 
     try:
         while True:
-            frame_data = await websocket.receive_text()
-            if not frame_data:
-                continue
-                
-            # Remove the data URL prefix if present
-            if ',' in frame_data:
-                _, encoded = frame_data.split(',', 1)
-            else:
-                encoded = frame_data
-                
-            nparr = np.frombuffer(base64.b64decode(encoded), np.uint8)
-            frame = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
-            
+            # Receive raw message supporting both binary JPEG frames and Base64 strings
+            message = await websocket.receive()
+            frame = None
+
+            if "bytes" in message and message["bytes"]:
+                # High-efficiency binary JPEG buffer
+                nparr = np.frombuffer(message["bytes"], np.uint8)
+                frame = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+            elif "text" in message and message["text"]:
+                frame_data = message["text"]
+                if not frame_data.strip():
+                    continue
+                # Remove data URL prefix if present
+                if ',' in frame_data:
+                    _, encoded = frame_data.split(',', 1)
+                else:
+                    encoded = frame_data
+                try:
+                    nparr = np.frombuffer(base64.b64decode(encoded), np.uint8)
+                    frame = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+                except Exception as decode_err:
+                    logger.warning(f"Failed to decode base64 frame: {decode_err}")
+                    continue
+
             if frame is not None:
-                # Directly predict on the clean, unblurred frame in real-time
                 timestamp = time.time() * 1000
-                result = infr.predict(frame)
-                
+                # Offload PyTorch/YOLO inference to Starlette threadpool
+                # This guarantees the asyncio event loop is never blocked
+                result = await run_in_threadpool(infr.predict, frame)
+
                 await websocket.send_json({
                     "timestamp": timestamp,
                     "prediction": result
                 })
+    except WebSocketDisconnect:
+        logger.info(f"Kiosk client disconnected gracefully: {client_host}")
     except Exception as e:
-        print(f"Error: {e}")
+        logger.error(f"WebSocket session error for {client_host}: {e}")
     finally:
         try:
             await websocket.close()
-        except:
+        except Exception:
             pass
 
 @app.get("/")
 async def root():
-    return {"message": "Classification server is running"}
+    return {
+        "service": "SMART WASH Classification Engine",
+        "status": "online",
+        "docs": "/docs",
+        "health": "/health",
+        "ready": "/ready"
+    }
+
+@app.get("/health")
+async def health():
+    """Liveness probe for Docker / Kubernetes container monitoring."""
+    return {
+        "status": "healthy",
+        "uptime_seconds": round(time.time() - START_TIME, 2),
+        "timestamp": time.time()
+    }
+
+@app.get("/ready")
+async def readiness():
+    """Readiness probe verifying model loaded status and execution device."""
+    is_ready = getattr(infr, "model_loaded", False)
+    return {
+        "status": "ready" if is_ready else "not_ready",
+        "device": getattr(infr, "device", "unknown"),
+        "classes": getattr(infr, "names", {}),
+        "uptime_seconds": round(time.time() - START_TIME, 2)
+    }
+
