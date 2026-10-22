@@ -134,3 +134,44 @@ Teachers access analytics and student management separately at [http://localhost
 | **Timer stays paused / Hands not detected** | Hands are held too low or not moving. | Raise hands in front of your chest within the dashed guide box and rub firmly. |
 | **Face ID shows "Student Not Recognized"** | Student is not yet enrolled in database. | Use the *Manual Fallback* box or enroll the student in `/teacher`. |
 | **Camera video is black** | Camera permissions blocked by browser. | Click the camera icon in your browser address bar and choose *Always allow*. |
+
+---
+
+## 🧠 8. AI Handwashing Action Recognition Pipeline (MediaPipe + LSTM)
+
+SMART WASH features a trained temporal action recognition system using MediaPipe Tasks HandLandmarker + PyTorch 2-layer LSTM:
+
+### Pipeline Stages & Commands
+
+1. **Dataset Validation**:
+   Validate video annotations and check timestamp bounds against physical video files:
+   ```bash
+   py -3.10 ml/training/validate_annotations.py
+   ```
+2. **Landmark Feature Extraction**:
+   Extracts 21 3D landmarks for both hands (126-d normalized vector relative to wrist origin and palm scale) and slices into 30-frame temporal sequences with data augmentations:
+   ```bash
+   py -3.10 ml/training/extract_landmarks.py
+   ```
+   *Output saved to `ml/training/dataset_landmarks.npz` (2,500 sequences across 7 classes).*
+
+3. **Train PyTorch LSTM Action Classifier**:
+   Trains 2-layer LSTM with held-out test evaluation (reports Accuracy, Precision, Recall, F1, Confusion Matrix, and Latency):
+   ```bash
+   py -3.10 ml/training/train_lstm.py --epochs 30 --batch-size 32
+   ```
+   *Model weights saved to `backend/models/lstm/handwash_lstm.pt` with config in `backend/models/lstm/config.json`.*
+
+4. **Run Automated Test Suite**:
+   Verify live WebSocket streaming and session isolation:
+   ```bash
+   # Test live WebSocket frame ingestion and Step 1 recognition
+   py -3.10 tests/test_lstm_websocket.py
+
+   # Test concurrent session buffer isolation (zero cross-student leakage)
+   py -3.10 tests/test_session_isolation.py
+
+   # Run frontend Vitest test suite
+   npm test -- --run
+   ```
+

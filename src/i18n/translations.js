@@ -21,7 +21,7 @@ export const en = {
   state_washing: 'Scrub Time!',
   state_scoring: 'Calculating Stars...',
   state_feedback: 'Superstar Score!',
-  state_unknown_student: 'New Hero Detected',
+  state_unknown_student: 'Unknown Person',
   state_multiple_faces: 'One Buddy at a Time',
 
   // Language Selection Screen
@@ -49,15 +49,10 @@ export const en = {
   // MULTIPLE_FACES State
   multiple_faces_title: 'ONE LITTLE HERO AT A TIME! 👯',
   multiple_faces_desc: 'Please let only one person stand in front of the camera so we can see you clearly.',
-  proceed_wash_anyway: 'Wash Anyway ➔',
-
   // UNKNOWN_STUDENT State
-  unknown_student_title: 'HELLO NEW FRIEND! 🌟',
-  unknown_student_desc: 'You can start washing right now as our special Guest Hero!',
-  start_as_guest: 'Start as Guest Hero ➔',
-  or_enter_student_id: 'Or Type Your Student ID',
-  proceed_with_id: 'Proceed with ID ➔',
-  id_not_found: 'Student ID not found in database.',
+  unknown_person_title: 'Unknown person',
+  unknown_person_body: 'Please ask your teacher to add you to the class.',
+  unknown_person_audio: 'Unknown person. Please ask your teacher to add you to the class.',
 
   // WASHING State
   who_standard_banner: '🌟 WHO Superhero Handwash Steps',
@@ -140,7 +135,7 @@ export const ml = {
   state_washing: 'കൈകഴുകൽ സമയം!',
   state_scoring: 'നക്ഷത്രങ്ങൾ എണ്ണുന്നു...',
   state_feedback: 'സൂപ്പർ സ്കോർ!',
-  state_unknown_student: 'പുതിയ കൂട്ടുകാരൻ',
+  state_unknown_student: 'പരിചയമില്ലാത്ത ആൾ',
   state_multiple_faces: 'ഒരാൾ മാത്രം വരിക',
 
   // Language Selection Screen
@@ -168,15 +163,10 @@ export const ml = {
   // MULTIPLE_FACES State
   multiple_faces_title: 'ഒരേ സമയം ഒരാൾ മാത്രം! 👯',
   multiple_faces_desc: 'ക്യാമറയിൽ വ്യക്തമായി കാണാൻ ഒരാൾ മാത്രം മുന്നിൽ നിൽക്കുക.',
-  proceed_wash_anyway: 'തുടരുക ➔',
-
   // UNKNOWN_STUDENT State
-  unknown_student_title: 'ഹലോ പുതിയ കൂട്ടുകാരാ! 🌟',
-  unknown_student_desc: 'രജിസ്റ്റർ ചെയ്തിട്ടില്ലെങ്കിലും നമ്മുടെ സ്പെഷ്യൽ ഹീറോ ആയി ഉടൻ തുടങ്ങാം!',
-  start_as_guest: 'ഗസ്റ്റ് ഹീറോ ആയി തുടങ്ങുക ➔',
-  or_enter_student_id: 'അല്ലെങ്കിൽ ഐഡി നൽകുക',
-  proceed_with_id: 'ഐഡി ഉപയോഗിച്ച് തുടങ്ങുക ➔',
-  id_not_found: 'വിദ്യാർത്ഥി ഐഡി കണ്ടെത്താനായില്ല.',
+  unknown_person_title: 'പരിചയമില്ലാത്ത ആൾ',
+  unknown_person_body: 'നിങ്ങളെ ക്ലാസ് ലിസ്റ്റിൽ ചേർക്കാൻ ടീച്ചറോട് പറയൂ.',
+  unknown_person_audio: 'പരിചയമില്ലാത്ത ആൾ. നിങ്ങളെ ക്ലാസ് ലിസ്റ്റിൽ ചേർക്കാൻ ടീച്ചറോട് പറയൂ.',
 
   // WASHING State
   who_standard_banner: '🌟 സൂപ്പർ ഹീറോ കൈകഴുകൽ ഘട്ടങ്ങൾ',
@@ -259,7 +249,7 @@ export const hi = {
   state_washing: 'हाथ रगड़ने का समय!',
   state_scoring: 'तारे गिन रहे हैं...',
   state_feedback: 'सुपरस्टार स्कोर!',
-  state_unknown_student: 'नया दोस्त मिला',
+  state_unknown_student: 'अज्ञात व्यक्ति',
   state_multiple_faces: 'एक बार में एक दोस्त',
 
   // Language Selection Screen
@@ -287,15 +277,10 @@ export const hi = {
   // MULTIPLE_FACES State
   multiple_faces_title: 'एक समय में केवल एक सुपरहीरो! 👯',
   multiple_faces_desc: 'कृपया कैमरे के सामने एक ही बच्चा खड़ा हो ताकि हम आपको साफ़ देख सकें।',
-  proceed_wash_anyway: 'आगे बढ़ें ➔',
-
   // UNKNOWN_STUDENT State
-  unknown_student_title: 'नमस्ते नन्हे दोस्त! 🌟',
-  unknown_student_desc: 'आप अभी पंजीकृत नहीं हैं, लेकिन हमारे स्पेशल गेस्ट हीरो बनकर तुरंत शुरू कर सकते हैं!',
-  start_as_guest: 'गेस्ट हीरो बनकर शुरू करें ➔',
-  or_enter_student_id: 'या छात्र आईडी दर्ज करें',
-  proceed_with_id: 'आईडी से शुरू करें ➔',
-  id_not_found: 'छात्र आईडी डेटाबेस में नहीं मिली।',
+  unknown_person_title: 'अज्ञात व्यक्ति',
+  unknown_person_body: 'कृपया अपने शिक्षक से कक्षा में नाम जोड़ने को कहें।',
+  unknown_person_audio: 'अज्ञात व्यक्ति. कृपया अपने शिक्षक से कक्षा में नाम जोड़ने को कहें।',
 
   // WASHING State
   who_standard_banner: '🌟 सुपरहीरो हाथ धोने के चरण',

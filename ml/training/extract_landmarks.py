@@ -1,97 +1,433 @@
 """
-SMART WASH — Hand Landmark Extraction Script
-Author: Jobiya (AI/Model Lead)
+SMART WASH — Hand Landmark Feature Extraction Pipeline
+Author: SMART WASH AI Pipeline
 
-Extracts 21 3D hand landmarks per hand (x, y, z) using MediaPipe Hands,
-normalizes coordinates relative to wrist location and hand scale,
-and exports feature vectors to CSV for LSTM model training.
+Extracts 21 3D hand landmarks per hand (x, y, z) using MediaPipe Tasks HandLandmarker.
+Applies:
+1. Left/Right canonical hand slot alignment (63 + 63 = 126 features).
+2. Wrist-relative origin translation (P_i - P_wrist).
+3. Palm-scale normalization (distance wrist to middle finger MCP).
+4. Temporal sliding window segmentation (seq_len=30) strictly within segment bounds.
+5. Data augmentation (horizontal mirroring, Gaussian noise).
+6. Background / idle sequence synthesis.
+7. Exports reusable dataset to dataset_landmarks.npz with video source tags.
 """
 
-import sys
 import os
+import sys
+import json
 import argparse
 import numpy as np
-import pandas as pd
+import cv2
+import mediapipe as mp
 
-# WHO 6 Handwashing Steps
-WHO_STEPS = {
-    0: "Step 0: Wet & Soap",
-    1: "Step 1: Palm to Palm",
-    2: "Step 2: Right Palm over Left Dorsum & vice versa",
-    3: "Step 3: Palm to Palm with Fingers Interlaced",
-    4: "Step 4: Backs of Fingers to Opposing Palms",
-    5: "Step 5: Rotational Rubbing of Thumbs",
-    6: "Step 6: Rotational Rubbing of Fingertips on Palms"
-}
+BaseOptions = mp.tasks.BaseOptions
+HandLandmarker = mp.tasks.vision.HandLandmarker
+HandLandmarkerOptions = mp.tasks.vision.HandLandmarkerOptions
+VisionRunningMode = mp.tasks.vision.RunningMode
 
-def normalize_landmarks(landmarks_3d):
+FEATURE_DIM = 126  # 2 hands * 21 landmarks * 3 coords
+HAND_FEATURE_DIM = 63  # 21 landmarks * 3 coords
+
+def normalize_single_hand(landmarks_21):
     """
-    Normalizes hand landmarks:
-    1. Translate origin (0,0,0) to wrist (landmark 0).
-    2. Scale relative to distance between wrist (0) and middle finger MCP (9).
+    Normalizes a single hand's 21 landmarks:
+    - Origin at wrist (landmark 0).
+    - Scale divided by distance between wrist (0) and middle finger MCP (9).
     """
-    if len(landmarks_3d) == 0:
-        return np.zeros(63)
+    pts = np.array([[lm.x, lm.y, lm.z] for lm in landmarks_21], dtype=np.float32)
+    wrist = pts[0]
+    translated = pts - wrist
     
-    landmarks = np.array(landmarks_3d).reshape(-1, 3)
-    wrist = landmarks[0]
-    translated = landmarks - wrist
-    
-    # Scale distance wrist to middle MCP (landmark 9)
-    scale = np.linalg.norm(translated[9])
-    if scale > 1e-6:
+    middle_mcp = translated[9]
+    scale = np.linalg.norm(middle_mcp)
+    if scale > 1e-5:
         normalized = translated / scale
     else:
         normalized = translated
         
-    return normalized.flatten()
+    return normalized.flatten()  # 63 float values
 
-def generate_synthetic_dataset(num_samples_per_step=100, seq_length=30):
+def format_frame_landmarks(hand_landmarks_list, handedness_list):
     """
-    Generates synthetic landmark sequence data for WHO steps to enable end-to-end
-    training pipeline testing without needing raw video uploads.
+    Constructs a 126-dimensional canonical vector for 2 hands:
+    - [0:63] = Left Hand
+    - [63:126] = Right Hand
+    Zero-padded if a hand is not detected.
     """
-    print(f"[ML Pipeline] Generating synthetic landmark dataset ({num_samples_per_step} sequences per step)...")
-    records = []
+    feat = np.zeros(FEATURE_DIM, dtype=np.float32)
+    if not hand_landmarks_list:
+        return feat
+
+    num_hands = len(hand_landmarks_list)
+    if num_hands == 1:
+        # Determine handedness
+        label = handedness_list[0][0].category_name if handedness_list else "Right"
+        hand_norm = normalize_single_hand(hand_landmarks_list[0])
+        if label.lower() == "left":
+            feat[0:HAND_FEATURE_DIM] = hand_norm
+        else:
+            feat[HAND_FEATURE_DIM:FEATURE_DIM] = hand_norm
+    else:
+        # 2 or more hands: sort by handedness label, or x-coordinate if both identical
+        h0_label = handedness_list[0][0].category_name.lower() if handedness_list else "left"
+        h1_label = handedness_list[1][0].category_name.lower() if len(handedness_list) > 1 else "right"
+        
+        h0_norm = normalize_single_hand(hand_landmarks_list[0])
+        h1_norm = normalize_single_hand(hand_landmarks_list[1])
+        
+        if h0_label == "left" and h1_label == "right":
+            feat[0:HAND_FEATURE_DIM] = h0_norm
+            feat[HAND_FEATURE_DIM:FEATURE_DIM] = h1_norm
+        elif h0_label == "right" and h1_label == "left":
+            feat[0:HAND_FEATURE_DIM] = h1_norm
+            feat[HAND_FEATURE_DIM:FEATURE_DIM] = h0_norm
+        else:
+            # Both detected as same label: sort by wrist x coordinate
+            x0 = hand_landmarks_list[0][0].x
+            x1 = hand_landmarks_list[1][0].x
+            if x0 < x1:
+                feat[0:HAND_FEATURE_DIM] = h0_norm
+                feat[HAND_FEATURE_DIM:FEATURE_DIM] = h1_norm
+            else:
+                feat[0:HAND_FEATURE_DIM] = h1_norm
+                feat[HAND_FEATURE_DIM:FEATURE_DIM] = h0_norm
+                
+    return feat
+
+def augment_sequence_flip(seq):
+    """
+    Horizontal flip augmentation:
+    - Invert x coordinates (indices 0, 3, 6... in each 63-slice).
+    - Swap Left Hand [0:63] and Right Hand [63:126].
+    """
+    flipped = seq.copy()
+    left = flipped[:, 0:HAND_FEATURE_DIM].copy()
+    right = flipped[:, HAND_FEATURE_DIM:FEATURE_DIM].copy()
+
+    for p in range(0, HAND_FEATURE_DIM, 3):
+        left[:, p] = -left[:, p]
+        right[:, p] = -right[:, p]
+
+    flipped[:, 0:HAND_FEATURE_DIM] = right
+    flipped[:, HAND_FEATURE_DIM:FEATURE_DIM] = left
+    return flipped
+
+def augment_sequence_rotate(seq, angle_deg=12.0):
+    """Rotates landmark coordinates around z-axis by angle_deg."""
+    rotated = seq.copy()
+    theta = np.radians(angle_deg)
+    cos_t, sin_t = np.cos(theta), np.sin(theta)
+
+    for offset in (0, HAND_FEATURE_DIM):
+        for p in range(0, HAND_FEATURE_DIM, 3):
+            x = rotated[:, offset + p]
+            y = rotated[:, offset + p + 1]
+            rotated[:, offset + p] = x * cos_t - y * sin_t
+            rotated[:, offset + p + 1] = x * sin_t + y * cos_t
+    return rotated
+
+def augment_sequence_scale(seq, factor=1.15):
+    """Scales coordinates slightly to simulate hand distance/size differences."""
+    scaled = seq.copy()
+    mask = (scaled != 0.0)
+    scaled[mask] *= factor
+    return scaled
+
+def augment_sequence_hand_dropout(seq, drop_hand="left"):
+    """Zeroes out one hand to simulate physical hand occlusion during rubbing."""
+    dropped = seq.copy()
+    if drop_hand == "left":
+        dropped[:, 0:HAND_FEATURE_DIM] = 0.0
+    else:
+        dropped[:, HAND_FEATURE_DIM:FEATURE_DIM] = 0.0
+    return dropped
+
+def augment_sequence_speed(seq, target_len=30):
+    """Temporal speed resample using linear interpolation."""
+    orig_len = len(seq)
+    if orig_len == target_len:
+        return seq
+    orig_t = np.linspace(0, 1, orig_len)
+    new_t = np.linspace(0, 1, target_len)
+    resampled = np.zeros((target_len, seq.shape[1]), dtype=np.float32)
+    for dim in range(seq.shape[1]):
+        resampled[:, dim] = np.interp(new_t, orig_t, seq[:, dim])
+    return resampled
+
+def augment_sequence_noise(seq, sigma=0.015):
+    """Adds small Gaussian noise to active non-zero landmark coordinates."""
+    noise = np.random.normal(0, sigma, seq.shape).astype(np.float32)
+    mask = (seq != 0.0).astype(np.float32)
+    return seq + (noise * mask)
+
+def extract_landmarks_from_video(video_path, landmarker, max_frames=None):
+    """Extracts frame-by-frame 126-d normalized landmarks from a video file."""
+    cap = cv2.VideoCapture(video_path)
+    if not cap.isOpened():
+        raise IOError(f"Cannot open video {video_path}")
+        
+    fps = cap.get(cv2.CAP_PROP_FPS) or 30.0
+    frame_feats = []
+    frame_idx = 0
     
-    np.random.seed(42)
-    for step_id in range(1, 7):
-        for seq_idx in range(num_samples_per_step):
-            # Base pattern distinct per WHO step
-            base_freq = step_id * 0.5
-            phase = np.random.uniform(0, 2 * np.pi)
+    while cap.isOpened():
+        ret, frame = cap.read()
+        if not ret:
+            break
             
-            for t in range(seq_length):
-                time_val = t / seq_length
-                # Generate 21 3D points (63 values) per frame
-                raw_points = []
-                for p in range(21):
-                    x = np.sin(2 * np.pi * base_freq * time_val + p + phase) + np.random.normal(0, 0.05)
-                    y = np.cos(2 * np.pi * base_freq * time_val + p + phase) + np.random.normal(0, 0.05)
-                    z = 0.1 * np.sin(p) + np.random.normal(0, 0.02)
-                    raw_points.extend([x, y, z])
-                
-                norm_feat = normalize_landmarks(raw_points)
-                row = {
-                    "step_label": step_id,
-                    "sequence_id": f"seq_step{step_id}_{seq_idx}",
-                    "frame": t
-                }
-                for idx, val in enumerate(norm_feat):
-                    row[f"feature_{idx}"] = val
-                records.append(row)
-                
-    df = pd.DataFrame(records)
-    return df
+        rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        mp_img = mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb)
+        res = landmarker.detect(mp_img)
+        
+        feat = format_frame_landmarks(res.hand_landmarks, res.handedness)
+        frame_feats.append(feat)
+        frame_idx += 1
+        
+        if max_frames and frame_idx >= max_frames:
+            break
+            
+    cap.release()
+    return np.array(frame_feats, dtype=np.float32), fps
+
+def build_dataset(annotations_path, video_dir=None, model_asset_path=None, seq_length=30, stride=2):
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    with open(annotations_path, "r", encoding="utf-8") as f:
+        annot_data = json.load(f)
+        
+    if video_dir is None:
+        configured_dir = annot_data.get("default_video_dir", "../../../Handwashing")
+        candidates = [
+            os.path.normpath(os.path.join(base_dir, configured_dir)),
+            os.path.normpath(os.path.join(base_dir, "../../../Handwashing")),
+            os.path.normpath(os.path.join(base_dir, "../../Handwashing")),
+            r"c:\Users\jobiy\Downloads\smart-wash-main\Handwashing"
+        ]
+        video_dir = next((c for c in candidates if os.path.exists(c)), candidates[0])
+
+    if model_asset_path is None:
+        model_candidates = [
+            os.path.normpath(os.path.join(base_dir, "../../backend/models/mediapipe/hand_landmarker.task")),
+            os.path.normpath(os.path.join(base_dir, "../../../smart-wash-main/backend/models/mediapipe/hand_landmarker.task")),
+            r"c:\Users\jobiy\Downloads\smart-wash-main\smart-wash-main\backend\models\mediapipe\hand_landmarker.task"
+        ]
+        model_asset_path = next((m for m in model_candidates if os.path.exists(m)), model_candidates[0])
+
+    print(f"[EXTRACT] Using video directory: {video_dir}")
+    print(f"[EXTRACT] Using MediaPipe model asset: {model_asset_path}")
+
+    options = HandLandmarkerOptions(
+        base_options=BaseOptions(model_asset_path=model_asset_path),
+        running_mode=VisionRunningMode.IMAGE,
+        num_hands=2,
+        min_hand_detection_confidence=0.3,
+        min_hand_presence_confidence=0.3,
+        min_tracking_confidence=0.3
+    )
+
+    X_sequences = []
+    y_labels = []
+    video_sources = []
+    participant_sources = []
+
+    with HandLandmarker.create_from_options(options) as landmarker:
+        for vinfo in annot_data.get("videos", []):
+            fn = vinfo.get("filename")
+            pid = vinfo.get("participant_id", "P1")
+            vpath = os.path.join(video_dir, fn)
+            if not os.path.exists(vpath):
+                print(f"[WARN] Skipping missing video: {vpath}")
+                continue
+
+            print(f"[EXTRACT] Processing video: {fn}...")
+            frame_feats, fps = extract_landmarks_from_video(vpath, landmarker)
+            print(f"          Extracted {len(frame_feats)} frames at {fps:.1f} FPS.")
+
+            segments = vinfo.get("segments", [])
+            for seg in segments:
+                class_id = int(seg.get("class_id"))
+                start_sec = float(seg.get("start_sec", 0.0))
+                end_sec = float(seg.get("end_sec", len(frame_feats) / fps))
+
+                start_idx = max(0, int(round(start_sec * fps)))
+                end_idx = min(len(frame_feats), int(round(end_sec * fps)))
+                seg_feats = frame_feats[start_idx:end_idx]
+
+                if len(seg_feats) < seq_length:
+                    print(f"[WARN] Segment {seg.get('action')} too short ({len(seg_feats)} < {seq_length})")
+                    continue
+
+                # Slicing with stride
+                count = 0
+                for start in range(0, len(seg_feats) - seq_length + 1, stride):
+                    seq = seg_feats[start : start + seq_length]
+                    
+                    # 1. Base sequence
+                    X_sequences.append(seq)
+                    y_labels.append(class_id)
+                    video_sources.append(fn)
+                    participant_sources.append(pid)
+                    count += 1
+
+                    # 2. Horizontal Flip (Dominance & Mirroring invariance)
+                    flipped_seq = augment_sequence_flip(seq)
+                    X_sequences.append(flipped_seq)
+                    y_labels.append(class_id)
+                    video_sources.append(fn)
+                    participant_sources.append(pid)
+
+                    # 3. Rotation +12° (Camera angle invariance)
+                    rot_pos = augment_sequence_rotate(seq, +12.0)
+                    X_sequences.append(rot_pos)
+                    y_labels.append(class_id)
+                    video_sources.append(fn)
+                    participant_sources.append(pid)
+
+                    # 4. Rotation -12°
+                    rot_neg = augment_sequence_rotate(seq, -12.0)
+                    X_sequences.append(rot_neg)
+                    y_labels.append(class_id)
+                    video_sources.append(fn)
+                    participant_sources.append(pid)
+
+                    # 5. Hand Scale Variations (Distance & Hand-size invariance)
+                    scaled_up = augment_sequence_scale(seq, 1.15)
+                    X_sequences.append(scaled_up)
+                    y_labels.append(class_id)
+                    video_sources.append(fn)
+                    participant_sources.append(pid)
+
+                    scaled_down = augment_sequence_scale(seq, 0.85)
+                    X_sequences.append(scaled_down)
+                    y_labels.append(class_id)
+                    video_sources.append(fn)
+                    participant_sources.append(pid)
+
+                    # 6. Physical Occlusion Dropout (Simulating hand covering the other)
+                    occ_left = augment_sequence_hand_dropout(seq, "left")
+                    X_sequences.append(occ_left)
+                    y_labels.append(class_id)
+                    video_sources.append(fn)
+                    participant_sources.append(pid)
+
+                    occ_right = augment_sequence_hand_dropout(seq, "right")
+                    X_sequences.append(occ_right)
+                    y_labels.append(class_id)
+                    video_sources.append(fn)
+                    participant_sources.append(pid)
+
+                    # 7. Sensor Noise
+                    noisy_seq = augment_sequence_noise(seq)
+                    X_sequences.append(noisy_seq)
+                    y_labels.append(class_id)
+                    video_sources.append(fn)
+                    participant_sources.append(pid)
+
+                    # 8. Multi-speed (Fast rubbing)
+                    if start + 36 <= len(seg_feats):
+                        fast_seq = augment_sequence_speed(seg_feats[start : start + 36], 30)
+                        X_sequences.append(fast_seq)
+                        y_labels.append(class_id)
+                        video_sources.append(fn)
+                        participant_sources.append(pid)
+
+                    # 9. Multi-speed (Slow gentle rubbing)
+                    if start + 24 <= len(seg_feats):
+                        slow_seq = augment_sequence_speed(seg_feats[start : start + 24], 30)
+                        X_sequences.append(slow_seq)
+                        y_labels.append(class_id)
+                        video_sources.append(fn)
+                        participant_sources.append(pid)
+
+                print(f"          Action '{seg.get('action')}' (Class {class_id}): Generated {count * 10} augmented sequences.")
+
+            # Extract idle / background from lead-in (0 to 0.5s) if present
+            lead_in_end = int(round(0.4 * fps))
+            if lead_in_end >= seq_length:
+                bg_seq = frame_feats[0:seq_length]
+                X_sequences.append(bg_seq)
+                y_labels.append(0)
+                video_sources.append(fn)
+                participant_sources.append(pid)
+
+    # Synthesize comprehensive Class 0 (background / idle hands / no hands / single idle hand)
+    num_bg_needed = max(800, len(X_sequences) // 6)
+    print(f"[EXTRACT] Synthesizing {num_bg_needed} diverse background/idle sequences (Class 0)...")
+    for b in range(num_bg_needed):
+        sub_type = b % 5
+        if sub_type == 0:
+            # Completely absent hands (all zeros)
+            bg_seq = np.zeros((seq_length, FEATURE_DIM), dtype=np.float32)
+        elif sub_type == 1:
+            # Stationary / still hands with zero displacement
+            base_hand = np.random.uniform(-0.5, 0.5, (FEATURE_DIM,)).astype(np.float32)
+            bg_seq = np.tile(base_hand, (seq_length, 1))
+        elif sub_type == 2:
+            # Minor random drift (hands resting on sink rim)
+            base_hand = np.random.uniform(-0.3, 0.3, (FEATURE_DIM,)).astype(np.float32)
+            drift = np.random.normal(0, 0.005, (seq_length, FEATURE_DIM)).astype(np.float32)
+            bg_seq = np.tile(base_hand, (seq_length, 1)) + drift
+        elif sub_type == 3:
+            # Single idle hand waving or moving without rubbing
+            single_hand = np.zeros(FEATURE_DIM, dtype=np.float32)
+            single_hand[63:126] = np.random.uniform(-0.4, 0.4, (63,)).astype(np.float32)
+            bg_seq = np.tile(single_hand, (seq_length, 1)) + np.random.normal(0, 0.01, (seq_length, FEATURE_DIM)).astype(np.float32)
+        else:
+            # Non-washing broad hand movement (reaching for soap dispenser)
+            t_steps = np.linspace(0, 1, seq_length)[:, None]
+            path = np.sin(t_steps * np.pi) * 0.4
+            base = np.random.uniform(-0.2, 0.2, (1, FEATURE_DIM)).astype(np.float32)
+            bg_seq = base + path.astype(np.float32)
+
+        X_sequences.append(bg_seq)
+        y_labels.append(0)
+        video_sources.append("synthetic_bg")
+        participant_sources.append("P_BG")
+
+    X = np.array(X_sequences, dtype=np.float32)
+    y = np.array(y_labels, dtype=np.int64)
+    v_src = np.array(video_sources)
+    p_src = np.array(participant_sources)
+
+    print(f"\n[EXTRACT COMPLETE] Dataset shape: X={X.shape}, y={y.shape}")
+    for cid in range(7):
+        cname = annot_data.get("classes", {}).get(str(cid), f"Class_{cid}")
+        count = int(np.sum(y == cid))
+        print(f"  Class {cid} ({cname}): {count} sequences")
+
+    return X, y, v_src, p_src, annot_data
 
 def main():
-    parser = argparse.ArgumentParser(description="Extract hand landmarks for SMART WASH WHO step recognition.")
-    parser.add_argument("--output", type=str, default="landmarks_dataset.csv", help="Output CSV path")
+    parser = argparse.ArgumentParser(description="Extract hand landmarks from WHO videos for LSTM training.")
+    parser.add_argument("--annotations", type=str, default="annotations.json", help="Path to annotations.json")
+    parser.add_argument("--video-dir", type=str, default=None, help="Directory containing video files")
+    parser.add_argument("--output", type=str, default="dataset_landmarks.npz", help="Output .npz dataset path")
+    parser.add_argument("--seq-len", type=int, default=30, help="Sequence length in frames")
+    parser.add_argument("--stride", type=int, default=2, help="Sliding window stride in frames")
     args = parser.parse_args()
-    
-    df = generate_synthetic_dataset()
-    df.to_csv(args.output, index=False)
-    print(f"[ML Pipeline] Extraction complete. Dataset saved to '{args.output}' ({len(df)} rows).")
+
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    annot_path = os.path.join(base_dir, args.annotations) if not os.path.isabs(args.annotations) else args.annotations
+    output_path = os.path.join(base_dir, args.output) if not os.path.isabs(args.output) else args.output
+
+    X, y, v_src, p_src, annot_data = build_dataset(
+        annotations_path=annot_path,
+        video_dir=args.video_dir,
+        seq_length=args.seq_len,
+        stride=args.stride
+    )
+
+    np.savez_compressed(
+        output_path,
+        X=X,
+        y=y,
+        video_sources=v_src,
+        participant_sources=p_src,
+        classes=json.dumps(annot_data.get("classes", {})),
+        feature_dim=FEATURE_DIM,
+        seq_length=args.seq_len
+    )
+    print(f"[SAVED] Dataset successfully exported to: {output_path} ({os.path.getsize(output_path) / 1024:.1f} KB)")
 
 if __name__ == "__main__":
     main()

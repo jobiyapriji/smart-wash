@@ -13,7 +13,7 @@ import { cancelSpeech, speak } from '../../../src/services/speechService.js';
 import { useFaceRecognition } from '../../../shared/hooks/useFaceRecognition.js';
 import { useStepRecognition } from '../../../shared/hooks/useStepRecognition.js';
 import { useMediaPipeHands } from '../../../shared/hooks/useMediaPipeHands.js';
-import { createSession, updateSession } from '../../../shared/services/sessionService.js';
+import { createSession, updateSession, recordUnknownVisit } from '../../../shared/services/sessionService.js';
 import { calculateHandwashScore } from '../../../shared/services/scoringService.js';
 import { getAllStudents } from '../../../shared/services/studentService.js';
 import { isMockFirebase } from '../../../shared/firebaseConfig.js';
@@ -23,7 +23,7 @@ import { Button } from '../../../src/components/ui/Button.jsx';
 import { IconBadge } from '../../../src/components/ui/IconBadge.jsx';
 import { Pill } from '../../../src/components/ui/Pill.jsx';
 import { Confetti } from '../../../src/components/ui/Confetti.jsx';
-import { LogOut, Sparkles, User, AlertTriangle, Users, Search, HandMetal, ChevronRight } from 'lucide-react';
+import { LogOut, Sparkles, User, AlertTriangle, Users, Search, HandMetal, ChevronRight, HelpCircle } from 'lucide-react';
 
 export function StudentKioskApp({ useMock = false }) {
   const navigate = useNavigate();
@@ -32,8 +32,17 @@ export function StudentKioskApp({ useMock = false }) {
   const videoRef = useRef(null);
   const missedStepsRef = useRef([]);
 
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      window.__kioskDispatch = dispatch;
+    }
+  }, [dispatch]);
+
   // Check for ?debug=1 URL flag
   const isDebug = typeof window !== 'undefined' && window.location.search.includes('debug=1');
+
+  // Developer exception: ?allowGuest=1 enables dev test mode
+  const isAllowGuest = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('allowGuest') === '1';
 
   // Detection Mode: "strict" (real washing, default) | "dry" (testing via ?mode=dry)
   const isDryMode = typeof window !== 'undefined'
@@ -41,15 +50,8 @@ export function StudentKioskApp({ useMock = false }) {
     : HANDWASH_CONFIG.DETECTION_MODE === 'dry';
   const detectionMode = isDryMode ? 'dry' : 'strict';
 
-  // Enrolled student list for [Pick my name] in UNKNOWN_STUDENT
-  const [enrolledList, setEnrolledList] = useState([]);
-  const [showStudentPicker, setShowStudentPicker] = useState(false);
   const [isInitializingKiosk, setIsInitializingKiosk] = useState(true);
   const [isExiting, setIsExiting] = useState(false);
-
-  useEffect(() => {
-    getAllStudents().then(list => setEnrolledList(list || [])).catch(() => {});
-  }, []);
 
   // 1. MediaPipe Hands Hook (Rule 1 & Rule 2) - Hands required during WASHING (not before)
   const handState = useMediaPipeHands({
@@ -60,11 +62,14 @@ export function StudentKioskApp({ useMock = false }) {
     ].includes(state.currentState)
   });
 
-  // 2. Face Recognition Hook (Rule 6: distance < 0.50, 3-5 consecutive frames, ~1s)
+  // 2. Face Recognition Hook (Rule 6: distance < 0.50, 10 frames / ~3s evaluation window)
   const { 
     matchedStudent, 
     confidence: faceConfidence, 
     distance: faceDistance,
+    bestDistance,
+    framesChecked,
+    unknownReason,
     faceCount,
     faceBoxPercent,
     framingGuidance,
@@ -72,7 +77,8 @@ export function StudentKioskApp({ useMock = false }) {
     multipleFacesDetected, 
     unknownFaceDetected,
     isFacePresent,
-    lastFaceSeenTime 
+    lastFaceSeenTime,
+    simulateUnknownFace 
   } = useFaceRecognition({
     videoRef,
     enabled: [
@@ -86,6 +92,12 @@ export function StudentKioskApp({ useMock = false }) {
     distanceThreshold: HANDWASH_CONFIG.FACE_MATCH_DISTANCE_THRESHOLD,
     scanIntervalMs: 350
   });
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      window.__simulateUnknownFace = simulateUnknownFace;
+    }
+  }, [simulateUnknownFace]);
 
   // 3. READY State Countdown (3s auto-transition to WASHING)
   const [readyCountdown, setReadyCountdown] = useState(3);
@@ -111,9 +123,21 @@ export function StudentKioskApp({ useMock = false }) {
     return () => clearInterval(interval);
   }, [state.currentState]);
 
-  const handleProceedWithStudent = useCallback(async (student) => {
+  // Single source of truth for identified student:
+  // ONLY non-null on confirmed match in READY, WASHING, SCORING, or FEEDBACK states.
+  // Strictly null in IDLE, IDENTIFYING, UNKNOWN_STUDENT, MULTIPLE_FACES, LANGUAGE_SELECT,
+  // or when face is lost / session ends.
+  const identifiedStudent = [
+    KIOSK_STATES.READY,
+    KIOSK_STATES.WASHING,
+    KIOSK_STATES.SCORING,
+    KIOSK_STATES.FEEDBACK
+  ].includes(state.currentState) ? (state.student || null) : null;
+
+  const handleProceedWithStudent = useCallback(async (student, modeOverride = null) => {
+    const sessionMode = modeOverride || (student?.isTest ? 'test' : detectionMode);
     try {
-      const result = await createSession(student.studentId, student.name, 'face_recognition', 'UNKNOWN', detectionMode);
+      const result = await createSession(student.studentId, student.name, 'face_recognition', student.classId || 'UNKNOWN', sessionMode);
       dispatch({
         type: 'STUDENT_IDENTIFIED',
         payload: {
@@ -158,18 +182,64 @@ export function StudentKioskApp({ useMock = false }) {
     }
   }, [state.currentState, multipleFacesDetected, unknownFaceDetected, detectedDescriptor, isFacePresent]);
 
-  // 1. IDENTIFYING (Face Only):
+  // 1. IDENTIFYING & UNKNOWN AUTO-RECOVERY:
   // Match -> go to READY showing the student's name
-  // No match after ~3 s -> show "I don't know you yet" (UNKNOWN_STUDENT)
+  // No match after 10 frames (~3 s) -> show UNKNOWN_STUDENT
+  // In UNKNOWN: auto-recover if match appears, or return to IDLE when face leaves for 2s
   useEffect(() => {
-    if (state.currentState !== KIOSK_STATES.IDENTIFYING) return;
-
-    if (matchedStudent) {
-      handleProceedWithStudent(matchedStudent);
-    } else if (unknownFaceDetected) {
-      dispatch({ type: 'UNKNOWN_FACE_DETECTED' });
+    if (state.currentState === KIOSK_STATES.IDENTIFYING) {
+      if (matchedStudent) {
+        handleProceedWithStudent(matchedStudent);
+      } else if (unknownFaceDetected) {
+        dispatch({ type: 'UNKNOWN_FACE_DETECTED' });
+      }
+    } else if (state.currentState === KIOSK_STATES.UNKNOWN_STUDENT) {
+      if (matchedStudent) {
+        // Auto-recovery: person recognized (lighting improved or teacher enrolled them)
+        handleProceedWithStudent(matchedStudent);
+      } else if (!isFacePresent && !unknownFaceDetected) {
+        // Face has left frame for 2s
+        dispatch({ type: 'RESET_TO_IDLE' });
+      }
     }
-  }, [state.currentState, matchedStudent, unknownFaceDetected, handleProceedWithStudent]);
+  }, [state.currentState, matchedStudent, unknownFaceDetected, isFacePresent, handleProceedWithStudent]);
+
+  // When person walks away from unknown screen for 2s, return to IDLE
+  useEffect(() => {
+    if (state.currentState !== KIOSK_STATES.UNKNOWN_STUDENT) return;
+    if (!isFacePresent) {
+      const timer = setTimeout(() => {
+        if (!isFacePresent && state.currentState === KIOSK_STATES.UNKNOWN_STUDENT) {
+          dispatch({ type: 'RESET_TO_IDLE' });
+        }
+      }, 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [state.currentState, isFacePresent]);
+
+  // Speak title and body once when UNKNOWN screen appears, and record privacy-safe daily visit
+  const hasSpokenUnknownRef = useRef(false);
+  const hasRecordedUnknownRef = useRef(false);
+
+  useEffect(() => {
+    if (state.currentState === KIOSK_STATES.UNKNOWN_STUDENT) {
+      if (!hasSpokenUnknownRef.current) {
+        hasSpokenUnknownRef.current = true;
+        speak(
+          'unknown_person_audio',
+          lang,
+          `${t('unknown_person_title')}. ${t('unknown_person_body')}`
+        );
+      }
+      if (!hasRecordedUnknownRef.current) {
+        hasRecordedUnknownRef.current = true;
+        recordUnknownVisit().catch(err => console.warn('[StudentApp] Failed to record unknown visit:', err));
+      }
+    } else {
+      hasSpokenUnknownRef.current = false;
+      hasRecordedUnknownRef.current = false;
+    }
+  }, [state.currentState, lang, t]);
 
   const bothAbsentStartTimeRef = useRef(null);
 
@@ -219,14 +289,14 @@ export function StudentKioskApp({ useMock = false }) {
     const scoreBreakdown = calculateHandwashScore(state.completedSteps, currentMissed);
     const computedScore = scoreBreakdown.totalScore;
 
-    // Rule 7: Only save to Firebase if >= 1 verified step, >= 10s scrub time, and NOT a guest session
+    // Rule 7: Only save to Firebase if >= 1 verified step, >= 10s scrub time, and NOT a dev test session
     const completed = state.completedSteps || [];
     const totalScrubSec = completed.reduce((acc, s) => acc + (typeof s === 'object' ? (s.durationMs || 0) : 6000), 0) / 1000;
-    const isGuest = state.student?.studentId === HANDWASH_CONFIG.GUEST_STUDENT_ID || state.student?.isGuest;
+    const isTestMode = detectionMode === 'test' || state.student?.isTest;
 
     const shouldSave = completed.length >= HANDWASH_CONFIG.MIN_VERIFIED_STEPS_TO_SAVE && 
                        totalScrubSec >= HANDWASH_CONFIG.MIN_VERIFIED_SCRUB_TIME_SEC && 
-                       !isGuest;
+                       !isTestMode;
 
     if (shouldSave && state.sessionId) {
       await updateSession(state.sessionId, {
@@ -410,6 +480,22 @@ export function StudentKioskApp({ useMock = false }) {
                   🧪 TEST MODE
                 </span>
               )}
+              {isAllowGuest && (
+                <span style={{
+                  padding: '2px 8px',
+                  background: '#FEE2E2',
+                  border: '1.5px solid #1E293B',
+                  color: '#1E293B',
+                  fontSize: '10px',
+                  fontWeight: 800,
+                  borderRadius: '9999px',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '4px'
+                }}>
+                  🧪 TEST MODE: GUEST ACTIVE
+                </span>
+              )}
             </div>
           </div>
         </div>
@@ -492,7 +578,7 @@ export function StudentKioskApp({ useMock = false }) {
             state={state.currentState}
             activeStep={mlActiveStep}
             confidence={stepConfidence || faceConfidence}
-            student={state.student || matchedStudent}
+            student={identifiedStudent}
             handsData={handState.handsData}
             isDebug={isDebug}
             telemetry={telemetry}
@@ -502,6 +588,9 @@ export function StudentKioskApp({ useMock = false }) {
             faceCount={faceCount}
             faceBoxPercent={faceBoxPercent}
             faceDistance={faceDistance}
+            bestDistance={bestDistance}
+            framesChecked={framesChecked}
+            unknownReason={unknownReason}
             framingGuidance={framingGuidance}
           />
         </div>
@@ -760,128 +849,80 @@ export function StudentKioskApp({ useMock = false }) {
               }}>
                 {t('multiple_faces_desc')}
               </p>
-              
-              <Button
-                variant="secondary"
-                size="md"
-                onClick={() => handleProceedWithStudent({
-                  studentId: HANDWASH_CONFIG.GUEST_STUDENT_ID,
-                  name: 'Guest Student',
-                  classId: 'General',
-                  isGuest: true
-                })}
-              >
-                {t('proceed_wash_anyway')}
-              </Button>
             </div>
           )}
 
-          {/* UNKNOWN STUDENT State View */}
+          {/* UNKNOWN PERSON State View (No buttons in normal flow) */}
           {state.currentState === KIOSK_STATES.UNKNOWN_STUDENT && (
-            <div style={{ textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '18px' }}>
-              <IconBadge icon={User} color="amber" size="lg" shape="circle" />
+            <div style={{ textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '20px' }}>
+              <IconBadge icon={HelpCircle} color="amber" size="lg" shape="circle" />
               
               <h2 style={{
                 margin: 0,
                 fontSize: '34px',
                 fontWeight: 800,
                 color: '#1E293B',
-                fontFamily: 'Outfit, sans-serif'
+                fontFamily: 'Outfit, sans-serif',
+                lineHeight: 1.25,
+                maxWidth: '440px',
+                wordBreak: 'break-word'
               }}>
-                I don't know you yet
+                {t('unknown_person_title')}
               </h2>
               
               <p style={{
                 margin: 0,
                 color: '#64748B',
-                fontSize: '15px',
+                fontSize: '16px',
                 fontWeight: 600,
-                maxWidth: '380px',
-                lineHeight: 1.5
+                maxWidth: '420px',
+                lineHeight: 1.5,
+                wordBreak: 'break-word'
               }}>
-                We couldn't recognize your face. You can continue as a Guest or pick your name from the class list.
+                {t('unknown_person_body')}
               </p>
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', width: '100%', maxWidth: '320px' }}>
-                <button
-                  id="continue-as-guest-btn"
-                  onClick={() => handleProceedWithStudent({
-                    studentId: HANDWASH_CONFIG.GUEST_STUDENT_ID,
-                    name: 'Guest Student',
-                    classId: 'General',
-                    isGuest: true
-                  })}
-                  style={{
-                    padding: '12px 20px',
-                    background: '#8B5CF6',
-                    color: '#FFFFFF',
-                    border: '2px solid #1E293B',
-                    borderRadius: '9999px',
+              {/* Developer Test Mode Exception (?allowGuest=1) */}
+              {isAllowGuest && (
+                <div style={{ marginTop: '16px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
+                  <span style={{
+                    fontSize: '11px',
                     fontWeight: 800,
-                    fontSize: '14px',
-                    cursor: 'pointer',
-                    boxShadow: '4px 4px 0px 0px #1E293B',
-                    fontFamily: 'Outfit, sans-serif'
-                  }}
-                >
-                  Continue as Guest ➔
-                </button>
-
-                <button
-                  id="pick-my-name-btn"
-                  onClick={() => setShowStudentPicker(prev => !prev)}
-                  style={{
-                    padding: '10px 18px',
-                    background: '#FFFDF5',
-                    border: '2px solid #1E293B',
+                    padding: '3px 10px',
+                    borderRadius: '9999px',
+                    border: '1.5px solid #1E293B',
+                    background: '#FEF3C7',
                     color: '#1E293B',
-                    borderRadius: '9999px',
-                    fontWeight: 800,
-                    fontSize: '13px',
-                    cursor: 'pointer',
-                    boxShadow: '3px 3px 0px 0px #1E293B',
+                    textTransform: 'uppercase',
                     fontFamily: 'Outfit, sans-serif'
-                  }}
-                >
-                  {showStudentPicker ? 'Hide Name List' : 'Pick My Name 👤'}
-                </button>
-
-                {showStudentPicker && (
-                  <div style={{
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: '6px',
-                    maxHeight: '160px',
-                    overflowY: 'auto',
-                    background: '#FFFDF5',
-                    padding: '8px',
-                    borderRadius: '16px',
-                    border: '2px solid #1E293B',
-                    boxShadow: '3px 3px 0px 0px #1E293B'
                   }}>
-                    {enrolledList.map(st => (
-                      <button
-                        key={st.studentId}
-                        onClick={() => handleProceedWithStudent(st)}
-                        style={{
-                          padding: '8px 12px',
-                          background: '#FFFFFF',
-                          border: '1.5px solid #1E293B',
-                          borderRadius: '10px',
-                          color: '#1E293B',
-                          textAlign: 'left',
-                          cursor: 'pointer',
-                          fontSize: '12px',
-                          fontWeight: 700,
-                          fontFamily: 'Plus Jakarta Sans, sans-serif'
-                        }}
-                      >
-                        👤 {st.name} ({st.classId || 'Class A'})
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
+                    🧪 TEST MODE: DEV GUEST ACTIVE
+                  </span>
+                  <button
+                    id="dev-test-wash-btn"
+                    onClick={() => handleProceedWithStudent({
+                      studentId: 'DEV_TEST_USER',
+                      name: 'Dev Test User',
+                      classId: 'Test Class',
+                      isTest: true
+                    }, 'test')}
+                    style={{
+                      padding: '10px 22px',
+                      borderRadius: '9999px',
+                      border: '2px solid #1E293B',
+                      background: '#8B5CF6',
+                      color: '#FFFFFF',
+                      fontSize: '13px',
+                      fontWeight: 800,
+                      cursor: 'pointer',
+                      boxShadow: '3px 3px 0 0 #1E293B',
+                      fontFamily: 'Outfit, sans-serif'
+                    }}
+                  >
+                    Start Test Wash (Dev Only) ➔
+                  </button>
+                </div>
+              )}
             </div>
           )}
 

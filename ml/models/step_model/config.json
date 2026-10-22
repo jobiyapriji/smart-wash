@@ -1,0 +1,30 @@
+{
+  "model_architecture": "HandwashLSTM",
+  "input_size": 126,
+  "sequence_length": 30,
+  "hidden_size": 64,
+  "num_layers": 2,
+  "num_classes": 7,
+  "classes": {
+    "0": "background",
+    "1": "Step_1",
+    "2": "Step_2",
+    "3": "Step_3",
+    "4": "Step_4",
+    "5": "Step_5",
+    "6": "Step_6"
+  },
+  "normalization": {
+    "type": "wrist_centered_scale_normalized",
+    "wrist_index": 0,
+    "middle_mcp_index": 9,
+    "feature_dim": 126
+  },
+  "metrics": {
+    "test_accuracy": 0.9731,
+    "macro_f1": 0.9733,
+    "weighted_f1": 0.9732,
+    "latency_ms": 1.11
+  },
+  "weights_file": "handwash_lstm.pt"
+}

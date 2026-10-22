@@ -1,6 +1,11 @@
 from ultralytics import YOLO
 import os
 try:
+    from .lstm_engine import LSTMHandwashClassifier, SessionLandmarkBuffer
+except (ImportError, ValueError):
+    from lstm_engine import LSTMHandwashClassifier, SessionLandmarkBuffer
+
+try:
     from .utils.classifier import Classifier
 except (ImportError, ValueError):
     from utils.classifier import Classifier
@@ -8,12 +13,30 @@ except (ImportError, ValueError):
 class inferance:
     def __init__(self):
         self.path = os.path.dirname(os.path.abspath(__file__))
+        
+        # Try loading LSTM action recognition first
+        try:
+            self.lstm = LSTMHandwashClassifier()
+            self.session = SessionLandmarkBuffer(self.lstm)
+            self.device = str(self.lstm.device)
+            self.names = self.lstm.classes
+            self.model_loaded = True
+        except Exception as e:
+            self.lstm = None
+            self.session = None
+
+        # Legacy YOLO model fallback
         model_path = os.path.join(self.path, "models/classifier/best.pt")
-        self.classification_model = YOLO(model_path)
-        self.classifier = Classifier(model=self.classification_model)
-        self.device = str(getattr(self.classification_model, 'device', 'cpu'))
-        self.names = getattr(self.classification_model, 'names', {})
-        self.model_loaded = self.classification_model is not None
+        try:
+            self.classification_model = YOLO(model_path)
+            self.classifier = Classifier(model=self.classification_model)
+            if not getattr(self, "model_loaded", False):
+                self.device = str(getattr(self.classification_model, 'device', 'cpu'))
+                self.names = getattr(self.classification_model, 'names', {})
+                self.model_loaded = True
+        except Exception:
+            self.classification_model = None
+            self.classifier = None
 
     def predict(self, image):
         # image is a 320x320 BGR numpy array

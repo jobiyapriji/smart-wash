@@ -6,7 +6,7 @@ import { StudentManagementList } from './components/StudentManagementList.jsx';
 import { StudentEnrollmentForm } from './components/StudentEnrollmentForm.jsx';
 import { StudentProfile } from './components/StudentProfile.jsx';
 import { getAllStudents } from '../../../shared/services/studentService.js';
-import { getAllSessions } from '../../../shared/services/sessionService.js';
+import { getAllSessions, getDailyUnknownVisits } from '../../../shared/services/sessionService.js';
 import { isMockFirebase } from '../../../shared/firebaseConfig.js';
 import { LoadingPage } from '../../../src/components/LoadingPage.jsx';
 
@@ -29,7 +29,7 @@ import {
   UserCheck
 } from 'lucide-react';
 
-function OverviewDashboard({ students, sessions, avgClassScore }) {
+function OverviewDashboard({ students, sessions, avgClassScore, unknownVisits = 0 }) {
   return (
     <>
       {/* 4 Overview Stat Cards as Stickers */}
@@ -262,6 +262,64 @@ function OverviewDashboard({ students, sessions, avgClassScore }) {
             Tracked today
           </div>
         </div>
+
+        {/* Stat 5: Unknown Visits */}
+        <div style={{
+          background: '#FFFFFF',
+          borderRadius: '20px',
+          padding: '22px',
+          border: '2.5px solid #1E293B',
+          boxShadow: '4px 4px 0px 0px #1E293B',
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'space-between',
+          transition: 'transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1)',
+          cursor: 'default'
+        }}
+        onMouseEnter={e => {
+          e.currentTarget.style.transform = 'translate(-2px, -2px) rotate(-0.5deg)';
+          e.currentTarget.style.boxShadow = '6px 6px 0px 0px #1E293B';
+        }}
+        onMouseLeave={e => {
+          e.currentTarget.style.transform = 'none';
+          e.currentTarget.style.boxShadow = '4px 4px 0px 0px #1E293B';
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontSize: '11px', color: '#64748B', textTransform: 'uppercase', fontWeight: 800, letterSpacing: '0.04em', fontFamily: 'Outfit, sans-serif' }}>
+              Unknown Visits
+            </span>
+            <div style={{
+              width: '32px',
+              height: '32px',
+              borderRadius: '50%',
+              background: '#FEF3C7',
+              border: '1.5px solid #1E293B',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '15px',
+              fontWeight: 900
+            }}>
+              ❓
+            </div>
+          </div>
+          <div style={{ fontSize: '38px', fontWeight: 900, color: '#1E293B', margin: '8px 0 4px 0', fontFamily: 'Outfit, sans-serif' }}>
+            {unknownVisits}
+          </div>
+          <div style={{
+            fontSize: '11px',
+            color: '#1E293B',
+            fontWeight: 800,
+            background: '#FEF3C7',
+            padding: '2px 8px',
+            borderRadius: '9999px',
+            border: '1px solid #1E293B',
+            alignSelf: 'flex-start',
+            fontFamily: 'Outfit, sans-serif'
+          }}>
+            Unenrolled today
+          </div>
+        </div>
       </div>
 
       {/* Main Grid: Trend Chart & Leaderboard */}
@@ -289,6 +347,7 @@ export function TeacherDashboardApp() {
   const [authError, setAuthError] = useState('');
   const [students, setStudents] = useState([]);
   const [sessions, setSessions] = useState([]);
+  const [unknownVisits, setUnknownVisits] = useState(0);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [isExiting, setIsExiting] = useState(false);
 
@@ -327,10 +386,12 @@ export function TeacherDashboardApp() {
 
   const loadDashboardData = async () => {
     const rawStudentList = await getAllStudents();
-    const studentList = rawStudentList.filter(st => st.studentId !== 'GUEST' && !st.isGuest);
+    const studentList = rawStudentList.filter(st => !st.isTest);
     const rawSessionList = await getAllSessions();
-    // Rule 6 & Rule 5: Guest sessions AND dry test mode sessions are NOT counted in teacher analytics or the leaderboard
-    const sessionList = rawSessionList.filter(s => s.studentId !== 'GUEST' && !s.isGuest && s.mode !== 'dry');
+    // Test mode sessions AND dry test mode sessions are NOT counted in teacher analytics or the leaderboard
+    const sessionList = rawSessionList.filter(s => s.mode !== 'dry' && s.mode !== 'test');
+    const visits = await getDailyUnknownVisits();
+    setUnknownVisits(visits || 0);
     
     // Calculate scores for students based on recent sessions
     const studentMap = studentList.map(st => {
@@ -797,6 +858,7 @@ export function TeacherDashboardApp() {
               students={students} 
               sessions={sessions} 
               avgClassScore={avgClassScore}
+              unknownVisits={unknownVisits}
             />
           } />
           <Route path="/students" element={<StudentManagementList students={students} refreshData={loadDashboardData} />} />

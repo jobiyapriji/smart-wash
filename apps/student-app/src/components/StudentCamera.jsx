@@ -31,6 +31,9 @@ export function KioskCamera({
   faceCount = 0,
   faceBoxPercent = 0,
   faceDistance = null,
+  bestDistance = null,
+  framesChecked = 0,
+  unknownReason = '',
   framingGuidance = 'Look at the camera'
 }) {
   const { t } = useLanguage();
@@ -345,8 +348,8 @@ export function KioskCamera({
           </div>
         )}
 
-        {/* Bottom Student Recognition Tag */}
-        {student && (
+        {/* Bottom Student Recognition Tag: ONLY show on confirmed student in ready/washing/scoring/feedback */}
+        {Boolean(student && ['ready', 'washing', 'scoring', 'feedback'].includes(state)) && (
           <div style={{
             alignSelf: 'flex-start',
             background: '#FFFDF5',
@@ -456,6 +459,34 @@ export function KioskCamera({
                   : 'N/A'} (&lt; 0.50)
               </span>
             </div>
+
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <span>Best Match Dist:</span>
+              <span id="debug-best-distance" style={{
+                color: (bestDistance !== null && bestDistance !== Infinity && bestDistance < 0.50) ? '#22c55e' : '#94a3b8',
+                fontWeight: 'bold'
+              }}>
+                {bestDistance !== null && bestDistance !== Infinity && bestDistance !== undefined
+                  ? Number(bestDistance).toFixed(3)
+                  : 'N/A'}
+              </span>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <span>Frames Checked:</span>
+              <span id="debug-frames-checked" style={{ color: '#38bdf8', fontWeight: 'bold' }}>
+                {framesChecked} / 10
+              </span>
+            </div>
+
+            {unknownReason && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', borderTop: '1px dashed rgba(255,255,255,0.15)', paddingTop: '3px', marginTop: '2px' }}>
+                <span style={{ color: '#f87171' }}>UNKNOWN Reason:</span>
+                <span id="debug-unknown-reason" style={{ color: '#fca5a5', fontSize: '10px', wordBreak: 'break-all' }}>
+                  {unknownReason}
+                </span>
+              </div>
+            )}
 
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
               <span>Framing Help:</span>

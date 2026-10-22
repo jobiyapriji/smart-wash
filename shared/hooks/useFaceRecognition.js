@@ -34,6 +34,9 @@ export function useFaceRecognition({
   const [error, setError] = useState(null);
   const [multipleFacesDetected, setMultipleFacesDetected] = useState(false);
   const [unknownFaceDetected, setUnknownFaceDetected] = useState(false);
+  const [framesChecked, setFramesChecked] = useState(0);
+  const [bestDistance, setBestDistance] = useState(Infinity);
+  const [unknownReason, setUnknownReason] = useState('');
 
   // Framing help & telemetry
   const [faceCount, setFaceCount] = useState(0);
@@ -46,6 +49,9 @@ export function useFaceRecognition({
   const dominantFaceStableStartTimeRef = useRef(null);
   const stableFaceFramesRef = useRef(0);
   const faceFirstSeenTimeRef = useRef(null);
+  const framesCheckedRef = useRef(0);
+  const bestDistanceRef = useRef(Infinity);
+  const faceAbsentStartTimeRef = useRef(null);
 
   // Load enrolled students from Firestore / store
   const refreshStudents = useCallback(async () => {
@@ -63,6 +69,15 @@ export function useFaceRecognition({
   useEffect(() => {
     refreshStudents();
   }, [refreshStudents]);
+
+  // Periodic refresh (every 4s) so new enrollments by teacher are picked up automatically without reload
+  useEffect(() => {
+    if (!enabled) return;
+    const interval = setInterval(() => {
+      refreshStudents();
+    }, 4000);
+    return () => clearInterval(interval);
+  }, [enabled, refreshStudents]);
 
   // Load face-api models
   useEffect(() => {
@@ -110,6 +125,7 @@ export function useFaceRecognition({
           const now = Date.now();
           setIsFacePresent(true);
           setLastFaceSeenTime(now);
+          faceAbsentStartTimeRef.current = null;
 
           if (!faceFirstSeenTimeRef.current) {
             faceFirstSeenTimeRef.current = now;
@@ -160,12 +176,17 @@ export function useFaceRecognition({
             setConfidence(0);
             consecutiveMatchesRef.current = [];
             stableFaceFramesRef.current = 0;
+            framesCheckedRef.current = 0;
+            bestDistanceRef.current = Infinity;
+            setFramesChecked(0);
+            setBestDistance(Infinity);
+            setUnknownReason('');
           } else {
             setMultipleFacesDetected(false);
             const descriptor = Array.from(primary.descriptor);
             setDetectedDescriptor(descriptor);
 
-            // Face detected and stable for ~1 s (3-5 consecutive frames)
+            // Face detected and stable for ~1 s (3 consecutive frames)
             stableFaceFramesRef.current++;
 
             if (stableFaceFramesRef.current >= (HANDWASH_CONFIG.FACE_STABLE_FRAMES_REQUIRED || 3)) {
@@ -174,40 +195,46 @@ export function useFaceRecognition({
               setDistance(match.distance);
               setConfidence(match.confidence);
 
+              if (match.distance < bestDistanceRef.current) {
+                bestDistanceRef.current = match.distance;
+                setBestDistance(match.distance);
+              }
+
+              framesCheckedRef.current++;
+              setFramesChecked(framesCheckedRef.current);
+
               if (match.matchedStudent && match.distance < distanceThreshold) {
+                // Confirmed match: switch to READY automatically (auto-recovery from UNKNOWN)
                 setUnknownFaceDetected(false);
-                consecutiveMatchesRef.current.push(match.matchedStudent.studentId);
-                if (consecutiveMatchesRef.current.length > 3) {
-                  consecutiveMatchesRef.current.shift();
-                }
-
-                // Match -> confirm and set matchedStudent
-                const allMatch = consecutiveMatchesRef.current.length >= 3 &&
-                  consecutiveMatchesRef.current.every(id => id === match.matchedStudent.studentId);
-
-                if (allMatch) {
-                  setMatchedStudent(match.matchedStudent);
-                }
+                setUnknownReason('');
+                setMatchedStudent(match.matchedStudent);
+                framesCheckedRef.current = 0;
+                setFramesChecked(0);
               } else {
-                consecutiveMatchesRef.current = [];
-                // No match after ~3 s -> show "I don't know you yet"
-                const faceDuration = now - (faceFirstSeenTimeRef.current || now);
-                if (faceDuration >= (HANDWASH_CONFIG.FACE_NO_MATCH_TIMEOUT_MS || 3000)) {
+                // Only declare UNKNOWN if none of the 10 consecutive frames matched
+                if (framesCheckedRef.current >= 10) {
                   setUnknownFaceDetected(true);
                   setMatchedStudent(null);
+                  const reason = `No enrolled match (best: ${bestDistanceRef.current === Infinity ? 'N/A' : bestDistanceRef.current.toFixed(3)} >= 0.50 after ${framesCheckedRef.current} frames)`;
+                  setUnknownReason(reason);
                 }
               }
             }
           }
         } else {
           // No face in frame
+          const absentNow = Date.now();
+          if (!faceAbsentStartTimeRef.current) {
+            faceAbsentStartTimeRef.current = absentNow;
+          }
+          const absentDuration = absentNow - faceAbsentStartTimeRef.current;
+
           dominantFaceStableStartTimeRef.current = null;
           multiFaceConsecutiveFramesRef.current = 0;
           stableFaceFramesRef.current = 0;
           faceFirstSeenTimeRef.current = null;
           setIsFacePresent(false);
           setMultipleFacesDetected(false);
-          setUnknownFaceDetected(false);
           setDetectedDescriptor(null);
           setMatchedStudent(null);
           setDistance(Infinity);
@@ -215,6 +242,16 @@ export function useFaceRecognition({
           setFaceBoxPercent(0);
           setFramingGuidance('Look at the camera');
           consecutiveMatchesRef.current = [];
+
+          // When face leaves frame for 2 seconds (2000ms), return to IDENTIFYING/IDLE
+          if (absentDuration >= 2000) {
+            setUnknownFaceDetected(false);
+            setUnknownReason('');
+            framesCheckedRef.current = 0;
+            bestDistanceRef.current = Infinity;
+            setFramesChecked(0);
+            setBestDistance(Infinity);
+          }
         }
       }
     } catch (err) {
@@ -247,6 +284,11 @@ export function useFaceRecognition({
       setFaceBoxPercent(42);
       setIsFacePresent(true);
       setUnknownFaceDetected(false);
+      framesCheckedRef.current = 0;
+      setFramesChecked(0);
+      bestDistanceRef.current = 0.15;
+      setBestDistance(0.15);
+      setUnknownReason('');
       setFramingGuidance('Looking for your face...');
       setDetectedDescriptor(student.descriptor);
       console.log(`[useFaceRecognition] Simulated recognition for ${student.name}`);
@@ -270,6 +312,11 @@ export function useFaceRecognition({
     setFaceBoxPercent(40);
     setIsFacePresent(true);
     setUnknownFaceDetected(true);
+    framesCheckedRef.current = 10;
+    setFramesChecked(10);
+    bestDistanceRef.current = 0.72;
+    setBestDistance(0.72);
+    setUnknownReason('No enrolled match (best: 0.720 >= 0.50 after 10 frames)');
     setFramingGuidance('Looking for your face...');
     setDetectedDescriptor(Array.from({ length: 128 }, () => Math.random()));
     console.log('[useFaceRecognition] Simulated unknown face');
@@ -321,7 +368,10 @@ export function useFaceRecognition({
     enrolledStudents,
     matchedStudent,
     distance,
+    bestDistance,
     confidence,
+    framesChecked,
+    unknownReason,
     isDetecting,
     isModelLoaded,
     detectedDescriptor,

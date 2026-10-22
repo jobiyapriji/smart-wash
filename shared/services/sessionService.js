@@ -12,6 +12,7 @@ import {
   doc, 
   addDoc, 
   updateDoc, 
+  setDoc,
   getDoc, 
   getDocs, 
   query, 
@@ -152,4 +153,53 @@ export async function getAllSessions() {
   }
 
   return Array.from(mockSessionsStore.values());
+}
+
+// Privacy-safe daily unknown visits counter (number only: no photos, no descriptors)
+let mockDailyUnknownVisits = 0;
+
+export async function recordUnknownVisit() {
+  const todayKey = new Date().toISOString().slice(0, 10);
+  if (db && !isMockFirebase) {
+    try {
+      const visitDocRef = doc(db, 'analytics', `unknown_visits_${todayKey}`);
+      const snap = await getDoc(visitDocRef);
+      if (snap.exists()) {
+        await updateDoc(visitDocRef, {
+          count: (snap.data().count || 0) + 1,
+          updatedAt: serverTimestamp()
+        });
+      } else {
+        await setDoc(visitDocRef, {
+          date: todayKey,
+          count: 1,
+          updatedAt: serverTimestamp()
+        });
+      }
+      return true;
+    } catch (err) {
+      console.warn('[sessionService] Firestore recordUnknownVisit failed:', err.message);
+    }
+  }
+
+  mockDailyUnknownVisits++;
+  return true;
+}
+
+export async function getDailyUnknownVisits() {
+  const todayKey = new Date().toISOString().slice(0, 10);
+  if (db && !isMockFirebase) {
+    try {
+      const visitDocRef = doc(db, 'analytics', `unknown_visits_${todayKey}`);
+      const snap = await getDoc(visitDocRef);
+      if (snap.exists()) {
+        return snap.data().count || 0;
+      }
+      return 0;
+    } catch (err) {
+      console.warn('[sessionService] Firestore getDailyUnknownVisits failed:', err.message);
+    }
+  }
+
+  return mockDailyUnknownVisits;
 }

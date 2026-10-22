@@ -70,7 +70,6 @@ export const HANDWASH_CONFIG = {
   // 7. Session & Persistence Constraints (Rule 6 & Rule 7)
   MIN_VERIFIED_STEPS_TO_SAVE: 1,      // Must have at least 1 verified step to save to Firebase
   MIN_VERIFIED_SCRUB_TIME_SEC: 10,    // Total verified scrub time must be >= 10s to persist
-  GUEST_STUDENT_ID: 'GUEST',          // Fixed ID for guest sessions (not counted in analytics)
 
   // 8. Scoring & Tier Thresholds (Rule 7)
   TIERS: {
@@ -91,29 +90,33 @@ export const HANDWASH_CONFIG = {
  */
 export const YOLO_TO_WHO_STEP_MAP = {
   'Step_1': 1,
+  'Step_2': 2,
   'Step_2_Left': 2,
   'Step_2_Right': 2,
   'Step_3': 3,
+  'Step_4': 4,
   'Step_4_Left': 4,
   'Step_4_Right': 4,
-  'Step_4': 4,
+  'Step_5': 5,
   'Step_5_Left': 5,
   'Step_5_Right': 5,
+  'Step_6': 6,
   'Step_6_Left': 6,
   'Step_6_Right': 6
 };
 
 /**
- * Required hands count per WHO step (Rule 1).
- * Steps 1-6 are all two-handed rubbing techniques.
+ * Required hands count per WHO step.
+ * When rubbing vigorously, touching hands frequently merge into a single region.
+ * We require at least 1 hand presence detected with active movement.
  */
 export const STEP_REQUIRED_HANDS = {
-  1: 2,
-  2: 2,
-  3: 2,
-  4: 2,
-  5: 2,
-  6: 2
+  1: 1,
+  2: 1,
+  3: 1,
+  4: 1,
+  5: 1,
+  6: 1
 };
 
 export default HANDWASH_CONFIG;

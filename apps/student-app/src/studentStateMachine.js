@@ -63,12 +63,14 @@ export function kioskReducer(state, action) {
     case 'UNKNOWN_FACE_DETECTED':
       return {
         ...state,
+        student: null,
         currentState: KIOSK_STATES.UNKNOWN_STUDENT
       };
 
     case 'MULTIPLE_FACES_DETECTED':
       return {
         ...state,
+        student: null,
         currentState: KIOSK_STATES.MULTIPLE_FACES
       };
 

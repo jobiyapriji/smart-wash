@@ -232,13 +232,12 @@ export class StepRecognitionEngine {
 
     const handsMissing = this.lastHandsSeenTime === null || (now - this.lastHandsSeenTime) > this.handsMissingPauseMs;
 
-    const requiredHands = STEP_REQUIRED_HANDS[this.currentStep] || 2;
+    const requiredHands = STEP_REQUIRED_HANDS[this.currentStep] || 1;
     const mappedStep = this.getYoloClassStep(rawClass);
 
-    // RULE 1: Overlapping / Merged hands for Step 1
-    // Accept EITHER two hands OR one merged hand whose bounding box is wide
-    const isStep1 = this.currentStep === 1;
-    const handsCountQualifies = (handCount >= requiredHands) || (isStep1 && handCount >= 1 && (isMerged || handsData.length >= 1));
+    // RULE 1: Overlapping / Merged hands for all WHO rubbing steps
+    // During active rubbing, hands touch and frequently merge into a single detection area.
+    const handsCountQualifies = (handCount >= requiredHands) || (handCount >= 1 && (isMerged || handsData.length >= 1 || this.currentStep >= 1));
 
     const handsPresent = !handsMissing && 
       (handCount >= 1) &&

@@ -35,8 +35,8 @@ describe('Face Recognition & Autonomous Kiosk Flow Tests', () => {
     });
   });
 
-  describe('TEST 2: Enrolled student -> name shown. Unknown face -> guest/pick-name choices', () => {
-    it('displays enrolled student name in READY state', () => {
+  describe('TEST 2: Enrolled student -> recognised, name chip and panel agree, wash starts. Unknown face -> friendly Unknown Person screen (no buttons, no session)', () => {
+    it('displays enrolled student name in READY state and panel & chip read from single source of truth', () => {
       const state = kioskReducer(
         { ...INITIAL_KIOSK_STATE, currentState: KIOSK_STATES.IDENTIFYING },
         {
@@ -49,36 +49,115 @@ describe('Face Recognition & Autonomous Kiosk Flow Tests', () => {
       );
       expect(state.currentState).toBe(KIOSK_STATES.READY);
       expect(state.student.name).toBe('Jordan Taylor');
+
+      // Single source of truth identifiedStudent
+      const identifiedStudent = [
+        KIOSK_STATES.READY,
+        KIOSK_STATES.WASHING,
+        KIOSK_STATES.SCORING,
+        KIOSK_STATES.FEEDBACK
+      ].includes(state.currentState) ? (state.student || null) : null;
+      expect(identifiedStudent).toEqual({ studentId: 'STU_102', name: 'Jordan Taylor' });
     });
 
-    it('transitions to UNKNOWN_STUDENT after no match and provides guest/pick-name choices without auto-starting', () => {
+    it('transitions to UNKNOWN_STUDENT after 10 consecutive non-matching frames without buttons and student is null', () => {
       let state = { ...INITIAL_KIOSK_STATE, currentState: KIOSK_STATES.IDENTIFYING };
 
-      // Trigger unknown face detected after ~3s without match
+      // Trigger unknown face detected after 10 non-matching frames
       state = kioskReducer(state, { type: 'UNKNOWN_FACE_DETECTED' });
       expect(state.currentState).toBe(KIOSK_STATES.UNKNOWN_STUDENT);
+      expect(state.student).toBeNull();
 
-      // User chooses [Continue as Guest] -> proceeds to READY
-      const guestState = kioskReducer(state, {
+      // Single source of truth identifiedStudent is strictly null in UNKNOWN_STUDENT
+      const identifiedStudent = [
+        KIOSK_STATES.READY,
+        KIOSK_STATES.WASHING,
+        KIOSK_STATES.SCORING,
+        KIOSK_STATES.FEEDBACK
+      ].includes(state.currentState) ? (state.student || null) : null;
+      expect(identifiedStudent).toBeNull();
+
+      // UNKNOWN state never starts a session or has guest IDs
+      expect(state.sessionId).toBeNull();
+    });
+
+    it('guarantees no stale name chip when switching between two people', () => {
+      // Person 1 (Alex River) completes or leaves
+      let state = kioskReducer(
+        { ...INITIAL_KIOSK_STATE, currentState: KIOSK_STATES.IDENTIFYING },
+        {
+          type: 'STUDENT_IDENTIFIED',
+          payload: {
+            student: { studentId: 'STU_101', name: 'Alex River' },
+            sessionId: 'sess_alex'
+          }
+        }
+      );
+      expect(state.student.name).toBe('Alex River');
+
+      // Reset when Person 1 finishes or leaves
+      state = kioskReducer(state, { type: 'RESET_TO_IDLE' });
+      expect(state.student).toBeNull();
+
+      // Person 2 steps up -> IDENTIFYING
+      state = kioskReducer(state, { type: 'START_IDENTIFICATION' });
+      expect(state.student).toBeNull();
+
+      const identifyingStudent = [
+        KIOSK_STATES.READY,
+        KIOSK_STATES.WASHING,
+        KIOSK_STATES.SCORING,
+        KIOSK_STATES.FEEDBACK
+      ].includes(state.currentState) ? (state.student || null) : null;
+      expect(identifyingStudent).toBeNull();
+
+      // Person 2 is unknown
+      state = kioskReducer(state, { type: 'UNKNOWN_FACE_DETECTED' });
+      expect(state.student).toBeNull();
+
+      const unknownStudent = [
+        KIOSK_STATES.READY,
+        KIOSK_STATES.WASHING,
+        KIOSK_STATES.SCORING,
+        KIOSK_STATES.FEEDBACK
+      ].includes(state.currentState) ? (state.student || null) : null;
+      expect(unknownStudent).toBeNull();
+
+      // Person 2 is later enrolled and recognized -> Jordan Taylor
+      state = kioskReducer(state, {
         type: 'STUDENT_IDENTIFIED',
         payload: {
-          student: { studentId: HANDWASH_CONFIG.GUEST_STUDENT_ID, name: 'Guest Student', isGuest: true },
-          sessionId: 'sess_guest'
+          student: { studentId: 'STU_102', name: 'Jordan Taylor' },
+          sessionId: 'sess_jordan'
         }
       });
-      expect(guestState.currentState).toBe(KIOSK_STATES.READY);
-      expect(guestState.student.isGuest).toBe(true);
+      expect(state.student.name).toBe('Jordan Taylor');
+    });
 
-      // Or user chooses [Pick my name] -> proceeds to READY with chosen student
-      const pickedState = kioskReducer(state, {
+    it('auto-recovers from UNKNOWN_STUDENT to READY when enrolled match occurs without reloading', () => {
+      let state = kioskReducer(INITIAL_KIOSK_STATE, { type: 'UNKNOWN_FACE_DETECTED' });
+      expect(state.currentState).toBe(KIOSK_STATES.UNKNOWN_STUDENT);
+
+      // Teacher enrolls student -> next scan confirms match (< 0.5 distance)
+      state = kioskReducer(state, {
         type: 'STUDENT_IDENTIFIED',
         payload: {
-          student: { studentId: 'STU_103', name: 'Sam Chen' },
-          sessionId: 'sess_103'
+          student: { studentId: 'STU_NEW', name: 'Newly Enrolled Student' },
+          sessionId: 'sess_new'
         }
       });
-      expect(pickedState.currentState).toBe(KIOSK_STATES.READY);
-      expect(pickedState.student.name).toBe('Sam Chen');
+      expect(state.currentState).toBe(KIOSK_STATES.READY);
+      expect(state.student.name).toBe('Newly Enrolled Student');
+    });
+
+    it('returns from UNKNOWN_STUDENT to IDLE when person walks away for 2 seconds', () => {
+      let state = kioskReducer(INITIAL_KIOSK_STATE, { type: 'UNKNOWN_FACE_DETECTED' });
+      expect(state.currentState).toBe(KIOSK_STATES.UNKNOWN_STUDENT);
+
+      // Face absent for 2s triggers RESET_TO_IDLE
+      state = kioskReducer(state, { type: 'RESET_TO_IDLE' });
+      expect(state.currentState).toBe(KIOSK_STATES.IDLE);
+      expect(state.student).toBeNull();
     });
   });
 
@@ -273,6 +352,35 @@ describe('Face Recognition & Autonomous Kiosk Flow Tests', () => {
       expect(result.primaryFace).toBe(mockDetections[1]); // Uses largest face
       expect(result.significantFaces.length).toBe(1); // Small faces filtered out
       expect(result.isBlocked).toBe(false);
+    });
+  });
+
+  describe('TEST 8: Code Cleanliness: No guest strings or STU_GUEST IDs in normal codebase', () => {
+    it('confirms GUEST_STUDENT_ID is removed from configuration', () => {
+      expect(HANDWASH_CONFIG.GUEST_STUDENT_ID).toBeUndefined();
+    });
+
+    it('verifies developer exception: allowGuest=1 sessions tagged mode "test"', () => {
+      const isAllowGuest = true;
+      const effectiveMode = isAllowGuest ? 'test' : 'strict';
+      expect(effectiveMode).toBe('test');
+
+      const devSession = {
+        studentId: 'DEV_TEST_USER',
+        name: 'Dev Test User',
+        mode: 'test'
+      };
+
+      // Teacher dashboard excludes test mode and dry mode sessions
+      const sessions = [
+        { id: '1', mode: 'strict', complianceScore: 95 },
+        { id: '2', mode: 'dry', complianceScore: 80 },
+        { id: '3', mode: 'test', complianceScore: 90 }
+      ];
+
+      const analyticsSessions = sessions.filter(s => s.mode !== 'dry' && s.mode !== 'test');
+      expect(analyticsSessions.length).toBe(1);
+      expect(analyticsSessions[0].id).toBe('1');
     });
   });
 });

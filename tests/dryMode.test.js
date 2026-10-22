@@ -288,7 +288,7 @@ describe('Data Safety: Dry Mode Session Tagging & Teacher Analytics Exclusion', 
     const allSessions = await getAllSessions();
     // Simulate teacher dashboard session filtering
     const teacherAnalyticsSessions = allSessions.filter(
-      s => s.studentId !== 'GUEST' && !s.isGuest && s.mode !== 'dry'
+      s => s.mode !== 'dry' && s.mode !== 'test'
     );
 
     const hasDrySession = teacherAnalyticsSessions.some(s => s.mode === 'dry');
