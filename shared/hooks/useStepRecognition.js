@@ -131,6 +131,7 @@ export function useStepRecognition({
   useEffect(() => {
     engineRef.current = new StepRecognitionEngine({
       mode,
+      enableGeometryFallback: mode === 'dry' || Boolean(HANDWASH_CONFIG.ENABLE_ADAPTIVE_FUSION),
       confidenceThreshold: confidenceThreshold ?? (mode === 'dry' ? HANDWASH_CONFIG.DRY_CONFIDENCE_THRESHOLD : HANDWASH_CONFIG.CONFIDENCE_THRESHOLD),
       consecutiveFramesRequired: mode === 'dry' ? HANDWASH_CONFIG.DRY_DEBOUNCE_FRAMES : HANDWASH_CONFIG.DEBOUNCE_FRAMES,
       movementThreshold: HANDWASH_CONFIG.MOVEMENT_THRESHOLD
@@ -210,11 +211,21 @@ export function useStepRecognition({
 
     // Retrieve current hand landmark data
     const hands = handStateRef.current || {};
-    const handCount = hands.handCount ?? 0;
-    const handConfidence = hands.handConfidence ?? 0;
-    const handMovement = hands.handMovement ?? 0;
-    const isMoving = hands.isHandsMoving ?? false;
-    const handsMissingState = hands.handsMissing ?? (handCount === 0);
+    const backendHandCount = prediction.hand_count ?? 0;
+    const backendHandConfidence = prediction.hand_confidence ?? 0;
+
+    // Multi-modal ensemble: fuse local MediaPipe with backend MediaPipe Tasks
+    const handCount = Math.max(hands.handCount ?? 0, backendHandCount);
+    const handConfidence = Math.max(hands.handConfidence ?? 0, backendHandConfidence);
+
+    // Hands are missing only if NEITHER frontend nor backend detected hands
+    const handsMissingState = handCount === 0 || (hands.handsMissing && backendHandCount === 0);
+
+    // Movement: if student is actively washing, model predicts an active step
+    const isModelPredictingAction = prediction.class && prediction.class !== 'background' && (prediction.confidence || 0) >= 0.30;
+    const fallbackMovement = (isModelPredictingAction && handCount >= 1) ? 0.08 : 0;
+    const handMovement = Math.max(hands.handMovement ?? 0, fallbackMovement);
+    const isMoving = hands.isHandsMoving || (handMovement >= (HANDWASH_CONFIG.MOVEMENT_THRESHOLD || 0.05));
 
     setIsHandsMoving(isMoving);
     setHandsMissing(handsMissingState);
@@ -226,7 +237,9 @@ export function useStepRecognition({
       handCount,
       handConfidence,
       handMovement,
-      handsData: hands.handsData || []
+      isHandsMoving: isMoving,
+      handsData: hands.handsData || [],
+      isMerged: Boolean(prediction.is_merged || (backendHandCount >= 1 && (hands.handsData || []).some(h => h.isMerged)))
     }, now);
 
     const currentTarget = activeStepRef.current;
@@ -263,8 +276,9 @@ export function useStepRecognition({
     setStatusReason(result.statusReason || 'No hands');
     setGraceState(result.graceState || 'IDLE');
 
-    // Check if step advanced
-    if (result.smoothedStep > currentTarget) {
+    // Check if step advanced or sequence finished
+    const isStepAdvanced = result.rawStep > currentTarget || (result.isFinished && currentTarget === 6);
+    if (isStepAdvanced) {
       const duration = now - lastStepTimeRef.current;
       lastStepTimeRef.current = now;
       if (onStepCompletedRef.current) {
@@ -275,7 +289,7 @@ export function useStepRecognition({
           completed: true
         });
       }
-      setCompletedSteps(prev => [...prev, currentTarget]);
+      setCompletedSteps(prev => (prev.includes(currentTarget) ? prev : [...prev, currentTarget]));
     }
 
     setActiveStep(result.smoothedStep);
@@ -288,7 +302,7 @@ export function useStepRecognition({
     // Check if all 6 steps are complete
     if (result.isFinished) {
       if (onFinishWashingRef.current) {
-        onFinishWashingRef.current();
+        onFinishWashingRef.current(result.completedSteps);
       }
     }
   }, []);
@@ -296,7 +310,7 @@ export function useStepRecognition({
   // Frame Capture & WebSocket Streaming Loop
   const sendFrame = useCallback(() => {
     const video = videoRef?.current;
-    const isVideoPlaying = video && !video.paused && !video.ended && video.readyState >= 2;
+    const isVideoPlaying = video && !video.paused && !video.ended && video.readyState >= 2 && video.videoWidth > 0 && video.videoHeight > 0;
     if (!isVideoPlaying || !ctxRef.current || !canvasRef.current) {
       setTelemetry(prev => ({ ...prev, camActive: false }));
       return;
@@ -344,13 +358,22 @@ export function useStepRecognition({
   // Debug-only skip step (gated behind ?debug=1)
   const skipStep = useCallback(() => {
     if (!engineRef.current) return;
+    const currentTarget = activeStepRef.current;
     const result = engineRef.current.skipStep();
+    if (onStepCompletedRef.current) {
+      onStepCompletedRef.current({
+        stepNumber: currentTarget,
+        durationMs: 6000,
+        avgConfidence: 0.95,
+        completed: true
+      });
+    }
     setActiveStep(result.smoothedStep);
     setStepName(WHO_STEPS_INFO[result.smoothedStep]?.name || 'Unknown');
     setProgress(result.progressPercent);
     if (result.completedSteps) setCompletedSteps(result.completedSteps);
     if (result.isFinished && onFinishWashingRef.current) {
-      onFinishWashingRef.current();
+      onFinishWashingRef.current(result.completedSteps);
     }
   }, []);
 

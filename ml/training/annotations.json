@@ -104,6 +104,90 @@
           "end_sec": 10.0
         }
       ]
+    },
+    {
+      "filename": "video_20261022_111853.mp4",
+      "participant_id": "P2",
+      "fps": 60.0,
+      "total_frames": 902,
+      "segments": [
+        {
+          "action": "Step_1",
+          "class_id": 1,
+          "start_sec": 0.5,
+          "end_sec": 14.5
+        }
+      ]
+    },
+    {
+      "filename": "video_20261022_111954.mp4",
+      "participant_id": "P2",
+      "fps": 60.0,
+      "total_frames": 811,
+      "segments": [
+        {
+          "action": "Step_2",
+          "class_id": 2,
+          "start_sec": 0.5,
+          "end_sec": 13.0
+        }
+      ]
+    },
+    {
+      "filename": "video_20261022_112118.mp4",
+      "participant_id": "P2",
+      "fps": 60.0,
+      "total_frames": 1146,
+      "segments": [
+        {
+          "action": "Step_3",
+          "class_id": 3,
+          "start_sec": 0.5,
+          "end_sec": 18.5
+        }
+      ]
+    },
+    {
+      "filename": "video_20261022_113905.mp4",
+      "participant_id": "P2",
+      "fps": 60.0,
+      "total_frames": 729,
+      "segments": [
+        {
+          "action": "Step_4",
+          "class_id": 4,
+          "start_sec": 0.5,
+          "end_sec": 11.5
+        }
+      ]
+    },
+    {
+      "filename": "video_20261022_113953.mp4",
+      "participant_id": "P2",
+      "fps": 60.0,
+      "total_frames": 654,
+      "segments": [
+        {
+          "action": "Step_5",
+          "class_id": 5,
+          "start_sec": 0.5,
+          "end_sec": 10.4
+        }
+      ]
+    },
+    {
+      "filename": "video_20261022_114037.mp4",
+      "participant_id": "P2",
+      "fps": 60.0,
+      "total_frames": 702,
+      "segments": [
+        {
+          "action": "Step_6",
+          "class_id": 6,
+          "start_sec": 0.5,
+          "end_sec": 11.2
+        }
+      ]
     }
   ]
 }

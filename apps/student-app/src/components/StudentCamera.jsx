@@ -41,33 +41,95 @@ export function KioskCamera({
   const targetVideoRef = videoRef || localVideoRef;
   const canvasRef = useRef(null);
   const [copied, setCopied] = useState(false);
+  const [cameraError, setCameraError] = useState(null);
+  const [retryCount, setRetryCount] = useState(0);
 
   useEffect(() => {
-    let stream = null;
+    let isCancelled = false;
+    let localStream = null;
 
     async function initCamera() {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        setCameraError('Camera API (navigator.mediaDevices.getUserMedia) is not supported in this browser.');
+        return;
+      }
+
+      setCameraError(null);
+
+      let stream = null;
       try {
-        if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-          stream = await navigator.mediaDevices.getUserMedia({
-            video: { width: 1280, height: 720, facingMode: 'user' }
-          });
-          if (targetVideoRef.current) {
-            targetVideoRef.current.srcObject = stream;
+        // Preferred 720p HD preset
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: {
+            width: { ideal: 1280 },
+            height: { ideal: 720 },
+            facingMode: 'user'
           }
+        });
+      } catch (err1) {
+        console.warn('[KioskCamera] Preferred HD constraints failed, falling back to basic video:', err1);
+        try {
+          // Fallback to basic video constraint (universal webcam support in Chrome)
+          stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        } catch (err2) {
+          if (isCancelled) return;
+          console.error('[KioskCamera] Camera access failed in Chrome:', err2);
+          if (err2.name === 'NotAllowedError' || err2.name === 'PermissionDeniedError') {
+            setCameraError('Camera permission blocked in Chrome. Click the camera/lock icon in address bar to Allow.');
+          } else if (err2.name === 'NotReadableError') {
+            setCameraError('Camera is in use by another app or browser (e.g. Edge). Please close other camera tabs.');
+          } else {
+            setCameraError(`Camera error: ${err2.message || err2.name}`);
+          }
+          return;
         }
-      } catch (err) {
-        console.warn("[KioskCamera] Camera access denied or not available; using simulated feed.", err);
+      }
+
+      if (isCancelled) {
+        if (stream) stream.getTracks().forEach(t => t.stop());
+        return;
+      }
+
+      localStream = stream;
+      const video = targetVideoRef.current;
+      if (video) {
+        video.srcObject = stream;
+        video.muted = true;
+        video.defaultMuted = true;
+        video.setAttribute('playsinline', '');
+        video.setAttribute('autoplay', '');
+        video.setAttribute('muted', '');
+
+        const playVideo = () => {
+          const p = video.play();
+          if (p && typeof p.catch === 'function') {
+            p.catch(e => console.warn('[KioskCamera] Auto-play caught:', e));
+          }
+        };
+
+        if (video.readyState >= 2) {
+          playVideo();
+        } else {
+          video.onloadedmetadata = () => {
+            playVideo();
+          };
+        }
       }
     }
 
     initCamera();
 
     return () => {
-      if (stream) {
-        stream.getTracks().forEach(track => track.stop());
+      isCancelled = true;
+      if (localStream) {
+        localStream.getTracks().forEach(track => track.stop());
+        localStream = null;
+      }
+      if (targetVideoRef.current) {
+        targetVideoRef.current.srcObject = null;
       }
     };
-  }, [targetVideoRef]);
+  }, [retryCount, targetVideoRef]);
 
   // Prompt Fix 7: Draw MediaPipe hand landmarks and skeleton on canvas over video
   useEffect(() => {
@@ -171,6 +233,50 @@ export function KioskCamera({
           transform: 'scaleX(-1)' // Mirror view for natural kiosk feedback
         }}
       />
+
+      {/* Camera Error / Chrome Permission Overlay */}
+      {cameraError && (
+        <div style={{
+          position: 'absolute',
+          inset: 0,
+          background: 'rgba(9, 13, 22, 0.90)',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '24px',
+          textAlign: 'center',
+          zIndex: 30
+        }}>
+          <div style={{ fontSize: '36px', marginBottom: '10px' }}>📷</div>
+          <div style={{
+            color: '#F87171',
+            fontSize: '14px',
+            fontWeight: 800,
+            maxWidth: '320px',
+            lineHeight: 1.4,
+            marginBottom: '14px'
+          }}>
+            {cameraError}
+          </div>
+          <button
+            onClick={() => setRetryCount(c => c + 1)}
+            style={{
+              padding: '8px 18px',
+              borderRadius: '9999px',
+              background: '#38BDF8',
+              color: '#090D16',
+              border: '2px solid #1E293B',
+              fontWeight: 800,
+              fontSize: '13px',
+              cursor: 'pointer',
+              boxShadow: '2px 2px 0px #1E293B'
+            }}
+          >
+            🔄 Retry Camera
+          </button>
+        </div>
+      )}
 
       {/* MediaPipe Hand Landmarks Canvas Overlay (mirrored to match video) */}
       {isDebug && (

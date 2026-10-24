@@ -1,0 +1,2716 @@
+{
+  "dataset_version": "2.0-kaggle",
+  "source": "https://www.kaggle.com/datasets/realtimear/hand-wash-dataset",
+  "total_videos": 300,
+  "classes": {
+    "0": "background",
+    "1": "Step_1",
+    "2": "Step_2",
+    "3": "Step_3",
+    "4": "Step_4",
+    "5": "Step_5",
+    "6": "Step_6"
+  },
+  "videos": [
+    {
+      "filename": "HandWash_001_A_01_G01.mp4",
+      "folder": "Step_1",
+      "class_id": 1,
+      "action": "Step_1",
+      "fps": 30.0,
+      "total_frames": 338,
+      "duration_sec": 11.27
+    },
+    {
+      "filename": "HandWash_002_A_01_G01.mp4",
+      "folder": "Step_1",
+      "class_id": 1,
+      "action": "Step_1",
+      "fps": 30.0,
+      "total_frames": 338,
+      "duration_sec": 11.27
+    },
+    {
+      "filename": "HandWash_003_A_01_G01.mp4",
+      "folder": "Step_1",
+      "class_id": 1,
+      "action": "Step_1",
+      "fps": 30.0,
+      "total_frames": 541,
+      "duration_sec": 18.03
+    },
+    {
+      "filename": "HandWash_004_A_01_G01.mp4",
+      "folder": "Step_1",
+      "class_id": 1,
+      "action": "Step_1",
+      "fps": 30.0,
+      "total_frames": 614,
+      "duration_sec": 20.47
+    },
+    {
+      "filename": "HandWash_005_A_01_G01.mp4",
+      "folder": "Step_1",
+      "class_id": 1,
+      "action": "Step_1",
+      "fps": 30.0,
+      "total_frames": 338,
+      "duration_sec": 11.27
+    },
+    {
+      "filename": "HandWash_006_A_01_G01.mp4",
+      "folder": "Step_1",
+      "class_id": 1,
+      "action": "Step_1",
+      "fps": 30.0,
+      "total_frames": 541,
+      "duration_sec": 18.03
+    },
+    {
+      "filename": "HandWash_007_A_01_G01.mp4",
+      "folder": "Step_1",
+      "class_id": 1,
+      "action": "Step_1",
+      "fps": 30.0,
+      "total_frames": 679,
+      "duration_sec": 22.63
+    },
+    {
+      "filename": "HandWash_008_A_01_G01.mp4",
+      "folder": "Step_1",
+      "class_id": 1,
+      "action": "Step_1",
+      "fps": 30.0,
+      "total_frames": 544,
+      "duration_sec": 18.13
+    },
+    {
+      "filename": "HandWash_009_A_01_G02.mp4",
+      "folder": "Step_1",
+      "class_id": 1,
+      "action": "Step_1",
+      "fps": 30.0,
+      "total_frames": 476,
+      "duration_sec": 15.87
+    },
+    {
+      "filename": "HandWash_010_A_01_G02.mp4",
+      "folder": "Step_1",
+      "class_id": 1,
+      "action": "Step_1",
+      "fps": 30.0,
+      "total_frames": 474,
+      "duration_sec": 15.8
+    },
+    {
+      "filename": "HandWash_011_A_01_G02.mp4",
+      "folder": "Step_1",
+      "class_id": 1,
+      "action": "Step_1",
+      "fps": 30.0,
+      "total_frames": 679,
+      "duration_sec": 22.63
+    },
+    {
+      "filename": "HandWash_012_A_01_G03.mp4",
+      "folder": "Step_1",
+      "class_id": 1,
+      "action": "Step_1",
+      "fps": 30.0,
+      "total_frames": 538,
+      "duration_sec": 17.93
+    },
+    {
+      "filename": "HandWash_013_A_01_G03.mp4",
+      "folder": "Step_1",
+      "class_id": 1,
+      "action": "Step_1",
+      "fps": 30.0,
+      "total_frames": 472,
+      "duration_sec": 15.73
+    },
+    {
+      "filename": "HandWash_014_A_01_G03.mp4",
+      "folder": "Step_1",
+      "class_id": 1,
+      "action": "Step_1",
+      "fps": 30.0,
+      "total_frames": 610,
+      "duration_sec": 20.33
+    },
+    {
+      "filename": "HandWash_015_A_01_G04.mp4",
+      "folder": "Step_1",
+      "class_id": 1,
+      "action": "Step_1",
+      "fps": 30.0,
+      "total_frames": 546,
+      "duration_sec": 18.2
+    },
+    {
+      "filename": "HandWash_016_A_01_G04.mp4",
+      "folder": "Step_1",
+      "class_id": 1,
+      "action": "Step_1",
+      "fps": 30.0,
+      "total_frames": 615,
+      "duration_sec": 20.5
+    },
+    {
+      "filename": "HandWash_017_A_01_G04.mp4",
+      "folder": "Step_1",
+      "class_id": 1,
+      "action": "Step_1",
+      "fps": 30.0,
+      "total_frames": 344,
+      "duration_sec": 11.47
+    },
+    {
+      "filename": "HandWash_018_A_01_G05.mp4",
+      "folder": "Step_1",
+      "class_id": 1,
+      "action": "Step_1",
+      "fps": 30.0,
+      "total_frames": 321,
+      "duration_sec": 10.7
+    },
+    {
+      "filename": "HandWash_019_A_01_G05.mp4",
+      "folder": "Step_1",
+      "class_id": 1,
+      "action": "Step_1",
+      "fps": 30.0,
+      "total_frames": 302,
+      "duration_sec": 10.07
+    },
+    {
+      "filename": "HandWash_020_A_01_G05.mp4",
+      "folder": "Step_1",
+      "class_id": 1,
+      "action": "Step_1",
+      "fps": 30.0,
+      "total_frames": 314,
+      "duration_sec": 10.47
+    },
+    {
+      "filename": "HandWash_021_A_01_G05.mp4",
+      "folder": "Step_1",
+      "class_id": 1,
+      "action": "Step_1",
+      "fps": 30.0,
+      "total_frames": 491,
+      "duration_sec": 16.37
+    },
+    {
+      "filename": "HandWash_022_A_01_G05.mp4",
+      "folder": "Step_1",
+      "class_id": 1,
+      "action": "Step_1",
+      "fps": 30.0,
+      "total_frames": 415,
+      "duration_sec": 13.83
+    },
+    {
+      "filename": "HandWash_023_A_01_G05.mp4",
+      "folder": "Step_1",
+      "class_id": 1,
+      "action": "Step_1",
+      "fps": 30.0,
+      "total_frames": 532,
+      "duration_sec": 17.73
+    },
+    {
+      "filename": "HandWash_024_A_01_G05.mp4",
+      "folder": "Step_1",
+      "class_id": 1,
+      "action": "Step_1",
+      "fps": 30.0,
+      "total_frames": 398,
+      "duration_sec": 13.27
+    },
+    {
+      "filename": "HandWash_025_A_01_G05.mp4",
+      "folder": "Step_1",
+      "class_id": 1,
+      "action": "Step_1",
+      "fps": 30.0,
+      "total_frames": 300,
+      "duration_sec": 10.0
+    },
+    {
+      "filename": "HandWash_001_A_02_G_01.mp4",
+      "folder": "Step_2_Left",
+      "class_id": 2,
+      "action": "Step_2",
+      "fps": 30.0,
+      "total_frames": 334,
+      "duration_sec": 11.13
+    },
+    {
+      "filename": "HandWash_002_A_02_G_01.mp4",
+      "folder": "Step_2_Left",
+      "class_id": 2,
+      "action": "Step_2",
+      "fps": 30.0,
+      "total_frames": 334,
+      "duration_sec": 11.13
+    },
+    {
+      "filename": "HandWash_003_A_02_G_01.mp4",
+      "folder": "Step_2_Left",
+      "class_id": 2,
+      "action": "Step_2",
+      "fps": 30.0,
+      "total_frames": 398,
+      "duration_sec": 13.27
+    },
+    {
+      "filename": "HandWash_004_A_02_G_01.mp4",
+      "folder": "Step_2_Left",
+      "class_id": 2,
+      "action": "Step_2",
+      "fps": 30.0,
+      "total_frames": 401,
+      "duration_sec": 13.37
+    },
+    {
+      "filename": "HandWash_005_A_02_G_01.mp4",
+      "folder": "Step_2_Left",
+      "class_id": 2,
+      "action": "Step_2",
+      "fps": 30.0,
+      "total_frames": 470,
+      "duration_sec": 15.67
+    },
+    {
+      "filename": "HandWash_006_A_02_G_01.mp4",
+      "folder": "Step_2_Left",
+      "class_id": 2,
+      "action": "Step_2",
+      "fps": 30.0,
+      "total_frames": 408,
+      "duration_sec": 13.6
+    },
+    {
+      "filename": "HandWash_007_A_02_G_01.mp4",
+      "folder": "Step_2_Left",
+      "class_id": 2,
+      "action": "Step_2",
+      "fps": 30.0,
+      "total_frames": 408,
+      "duration_sec": 13.6
+    },
+    {
+      "filename": "HandWash_008_A_02_G_01.mp4",
+      "folder": "Step_2_Left",
+      "class_id": 2,
+      "action": "Step_2",
+      "fps": 30.0,
+      "total_frames": 610,
+      "duration_sec": 20.33
+    },
+    {
+      "filename": "HandWash_009_A_02_G_02.mp4",
+      "folder": "Step_2_Left",
+      "class_id": 2,
+      "action": "Step_2",
+      "fps": 30.0,
+      "total_frames": 546,
+      "duration_sec": 18.2
+    },
+    {
+      "filename": "HandWash_010_A_02_G_02.mp4",
+      "folder": "Step_2_Left",
+      "class_id": 2,
+      "action": "Step_2",
+      "fps": 30.0,
+      "total_frames": 411,
+      "duration_sec": 13.7
+    },
+    {
+      "filename": "HandWash_011_A_02_G_02.mp4",
+      "folder": "Step_2_Left",
+      "class_id": 2,
+      "action": "Step_2",
+      "fps": 30.0,
+      "total_frames": 613,
+      "duration_sec": 20.43
+    },
+    {
+      "filename": "HandWash_012_A_02_G_03.mp4",
+      "folder": "Step_2_Left",
+      "class_id": 2,
+      "action": "Step_2",
+      "fps": 30.0,
+      "total_frames": 405,
+      "duration_sec": 13.5
+    },
+    {
+      "filename": "HandWash_013_A_02_G_03.mp4",
+      "folder": "Step_2_Left",
+      "class_id": 2,
+      "action": "Step_2",
+      "fps": 30.0,
+      "total_frames": 408,
+      "duration_sec": 13.6
+    },
+    {
+      "filename": "HandWash_014_A_02_G_03.mp4",
+      "folder": "Step_2_Left",
+      "class_id": 2,
+      "action": "Step_2",
+      "fps": 30.0,
+      "total_frames": 272,
+      "duration_sec": 9.07
+    },
+    {
+      "filename": "HandWash_015_A_02_G_04.mp4",
+      "folder": "Step_2_Left",
+      "class_id": 2,
+      "action": "Step_2",
+      "fps": 30.0,
+      "total_frames": 413,
+      "duration_sec": 13.77
+    },
+    {
+      "filename": "HandWash_016_A_02_G_04.mp4",
+      "folder": "Step_2_Left",
+      "class_id": 2,
+      "action": "Step_2",
+      "fps": 30.0,
+      "total_frames": 344,
+      "duration_sec": 11.47
+    },
+    {
+      "filename": "HandWash_017_A_02_G_04.mp4",
+      "folder": "Step_2_Left",
+      "class_id": 2,
+      "action": "Step_2",
+      "fps": 30.0,
+      "total_frames": 339,
+      "duration_sec": 11.3
+    },
+    {
+      "filename": "HandWash_018_A_02_G_05.mp4",
+      "folder": "Step_2_Left",
+      "class_id": 2,
+      "action": "Step_2",
+      "fps": 30.0,
+      "total_frames": 361,
+      "duration_sec": 12.03
+    },
+    {
+      "filename": "HandWash_019_A_02_G_05.mp4",
+      "folder": "Step_2_Left",
+      "class_id": 2,
+      "action": "Step_2",
+      "fps": 30.0,
+      "total_frames": 338,
+      "duration_sec": 11.27
+    },
+    {
+      "filename": "HandWash_020_A_02_G_05.mp4",
+      "folder": "Step_2_Left",
+      "class_id": 2,
+      "action": "Step_2",
+      "fps": 30.0,
+      "total_frames": 412,
+      "duration_sec": 13.73
+    },
+    {
+      "filename": "HandWash_021_A_02_G_05.mp4",
+      "folder": "Step_2_Left",
+      "class_id": 2,
+      "action": "Step_2",
+      "fps": 30.0,
+      "total_frames": 328,
+      "duration_sec": 10.93
+    },
+    {
+      "filename": "HandWash_022_A_02_G_05.mp4",
+      "folder": "Step_2_Left",
+      "class_id": 2,
+      "action": "Step_2",
+      "fps": 30.0,
+      "total_frames": 373,
+      "duration_sec": 12.43
+    },
+    {
+      "filename": "HandWash_023_A_02_G_05.mp4",
+      "folder": "Step_2_Left",
+      "class_id": 2,
+      "action": "Step_2",
+      "fps": 30.0,
+      "total_frames": 391,
+      "duration_sec": 13.03
+    },
+    {
+      "filename": "HandWash_024_A_02_G_05.mp4",
+      "folder": "Step_2_Left",
+      "class_id": 2,
+      "action": "Step_2",
+      "fps": 30.0,
+      "total_frames": 252,
+      "duration_sec": 8.4
+    },
+    {
+      "filename": "HandWash_025_A_02_G_05.mp4",
+      "folder": "Step_2_Left",
+      "class_id": 2,
+      "action": "Step_2",
+      "fps": 30.0,
+      "total_frames": 234,
+      "duration_sec": 7.8
+    },
+    {
+      "filename": "HandWash_001_A_03_G_01.mp4",
+      "folder": "Step_2_Right",
+      "class_id": 2,
+      "action": "Step_2",
+      "fps": 30.0,
+      "total_frames": 267,
+      "duration_sec": 8.9
+    },
+    {
+      "filename": "HandWash_002_A_03_G_01.mp4",
+      "folder": "Step_2_Right",
+      "class_id": 2,
+      "action": "Step_2",
+      "fps": 30.0,
+      "total_frames": 467,
+      "duration_sec": 15.57
+    },
+    {
+      "filename": "HandWash_003_A_03_G_01.mp4",
+      "folder": "Step_2_Right",
+      "class_id": 2,
+      "action": "Step_2",
+      "fps": 30.0,
+      "total_frames": 401,
+      "duration_sec": 13.37
+    },
+    {
+      "filename": "HandWash_004_A_03_G_01.mp4",
+      "folder": "Step_2_Right",
+      "class_id": 2,
+      "action": "Step_2",
+      "fps": 30.0,
+      "total_frames": 398,
+      "duration_sec": 13.27
+    },
+    {
+      "filename": "HandWash_005_A_03_G_01.mp4",
+      "folder": "Step_2_Right",
+      "class_id": 2,
+      "action": "Step_2",
+      "fps": 30.0,
+      "total_frames": 396,
+      "duration_sec": 13.2
+    },
+    {
+      "filename": "HandWash_006_A_03_G_01.mp4",
+      "folder": "Step_2_Right",
+      "class_id": 2,
+      "action": "Step_2",
+      "fps": 30.0,
+      "total_frames": 477,
+      "duration_sec": 15.9
+    },
+    {
+      "filename": "HandWash_007_A_03_G_01.mp4",
+      "folder": "Step_2_Right",
+      "class_id": 2,
+      "action": "Step_2",
+      "fps": 30.0,
+      "total_frames": 344,
+      "duration_sec": 11.47
+    },
+    {
+      "filename": "HandWash_008_A_03_G_01.mp4",
+      "folder": "Step_2_Right",
+      "class_id": 2,
+      "action": "Step_2",
+      "fps": 30.0,
+      "total_frames": 546,
+      "duration_sec": 18.2
+    },
+    {
+      "filename": "HandWash_009_A_03_G_02.mp4",
+      "folder": "Step_2_Right",
+      "class_id": 2,
+      "action": "Step_2",
+      "fps": 30.0,
+      "total_frames": 472,
+      "duration_sec": 15.73
+    },
+    {
+      "filename": "HandWash_010_A_03_G_02.mp4",
+      "folder": "Step_2_Right",
+      "class_id": 2,
+      "action": "Step_2",
+      "fps": 30.0,
+      "total_frames": 605,
+      "duration_sec": 20.17
+    },
+    {
+      "filename": "HandWash_011_A_03_G_02.mp4",
+      "folder": "Step_2_Right",
+      "class_id": 2,
+      "action": "Step_2",
+      "fps": 30.0,
+      "total_frames": 671,
+      "duration_sec": 22.37
+    },
+    {
+      "filename": "HandWash_012_A_03_G_03.mp4",
+      "folder": "Step_2_Right",
+      "class_id": 2,
+      "action": "Step_2",
+      "fps": 30.0,
+      "total_frames": 272,
+      "duration_sec": 9.07
+    },
+    {
+      "filename": "HandWash_013_A_03_G_03.mp4",
+      "folder": "Step_2_Right",
+      "class_id": 2,
+      "action": "Step_2",
+      "fps": 30.0,
+      "total_frames": 408,
+      "duration_sec": 13.6
+    },
+    {
+      "filename": "HandWash_014_A_03_G_03.mp4",
+      "folder": "Step_2_Right",
+      "class_id": 2,
+      "action": "Step_2",
+      "fps": 30.0,
+      "total_frames": 339,
+      "duration_sec": 11.3
+    },
+    {
+      "filename": "HandWash_015_A_03_G_04.mp4",
+      "folder": "Step_2_Right",
+      "class_id": 2,
+      "action": "Step_2",
+      "fps": 30.0,
+      "total_frames": 408,
+      "duration_sec": 13.6
+    },
+    {
+      "filename": "HandWash_016_A_03_G_04.mp4",
+      "folder": "Step_2_Right",
+      "class_id": 2,
+      "action": "Step_2",
+      "fps": 30.0,
+      "total_frames": 336,
+      "duration_sec": 11.2
+    },
+    {
+      "filename": "HandWash_017_A_03_G_04.mp4",
+      "folder": "Step_2_Right",
+      "class_id": 2,
+      "action": "Step_2",
+      "fps": 30.0,
+      "total_frames": 336,
+      "duration_sec": 11.2
+    },
+    {
+      "filename": "HandWash_018_A_03_G_05.mp4",
+      "folder": "Step_2_Right",
+      "class_id": 2,
+      "action": "Step_2",
+      "fps": 30.0,
+      "total_frames": 410,
+      "duration_sec": 13.67
+    },
+    {
+      "filename": "HandWash_019_A_03_G_05.mp4",
+      "folder": "Step_2_Right",
+      "class_id": 2,
+      "action": "Step_2",
+      "fps": 30.0,
+      "total_frames": 329,
+      "duration_sec": 10.97
+    },
+    {
+      "filename": "HandWash_020_A_03_G_05.mp4",
+      "folder": "Step_2_Right",
+      "class_id": 2,
+      "action": "Step_2",
+      "fps": 30.0,
+      "total_frames": 245,
+      "duration_sec": 8.17
+    },
+    {
+      "filename": "HandWash_021_A_03_G_05.mp4",
+      "folder": "Step_2_Right",
+      "class_id": 2,
+      "action": "Step_2",
+      "fps": 30.0,
+      "total_frames": 378,
+      "duration_sec": 12.6
+    },
+    {
+      "filename": "HandWash_022_A_03_G_05.mp4",
+      "folder": "Step_2_Right",
+      "class_id": 2,
+      "action": "Step_2",
+      "fps": 30.0,
+      "total_frames": 400,
+      "duration_sec": 13.33
+    },
+    {
+      "filename": "HandWash_023_A_03_G_05.mp4",
+      "folder": "Step_2_Right",
+      "class_id": 2,
+      "action": "Step_2",
+      "fps": 30.0,
+      "total_frames": 285,
+      "duration_sec": 9.5
+    },
+    {
+      "filename": "HandWash_024_A_03_G_05.mp4",
+      "folder": "Step_2_Right",
+      "class_id": 2,
+      "action": "Step_2",
+      "fps": 30.0,
+      "total_frames": 289,
+      "duration_sec": 9.63
+    },
+    {
+      "filename": "HandWash_025_A_03_G_05.mp4",
+      "folder": "Step_2_Right",
+      "class_id": 2,
+      "action": "Step_2",
+      "fps": 30.0,
+      "total_frames": 258,
+      "duration_sec": 8.6
+    },
+    {
+      "filename": "HandWash_001_A_04_G_01.mp4",
+      "folder": "Step_3",
+      "class_id": 3,
+      "action": "Step_3",
+      "fps": 30.0,
+      "total_frames": 334,
+      "duration_sec": 11.13
+    },
+    {
+      "filename": "HandWash_002_A_04_G_01.mp4",
+      "folder": "Step_3",
+      "class_id": 3,
+      "action": "Step_3",
+      "fps": 30.0,
+      "total_frames": 405,
+      "duration_sec": 13.5
+    },
+    {
+      "filename": "HandWash_003_A_04_G_01.mp4",
+      "folder": "Step_3",
+      "class_id": 3,
+      "action": "Step_3",
+      "fps": 30.0,
+      "total_frames": 405,
+      "duration_sec": 13.5
+    },
+    {
+      "filename": "HandWash_004_A_04_G_01.mp4",
+      "folder": "Step_3",
+      "class_id": 3,
+      "action": "Step_3",
+      "fps": 30.0,
+      "total_frames": 398,
+      "duration_sec": 13.27
+    },
+    {
+      "filename": "HandWash_005_A_04_G_01.mp4",
+      "folder": "Step_3",
+      "class_id": 3,
+      "action": "Step_3",
+      "fps": 30.0,
+      "total_frames": 470,
+      "duration_sec": 15.67
+    },
+    {
+      "filename": "HandWash_006_A_04_G_01.mp4",
+      "folder": "Step_3",
+      "class_id": 3,
+      "action": "Step_3",
+      "fps": 30.0,
+      "total_frames": 339,
+      "duration_sec": 11.3
+    },
+    {
+      "filename": "HandWash_007_A_04_G_01.mp4",
+      "folder": "Step_3",
+      "class_id": 3,
+      "action": "Step_3",
+      "fps": 30.0,
+      "total_frames": 474,
+      "duration_sec": 15.8
+    },
+    {
+      "filename": "HandWash_008_A_04_G_01.mp4",
+      "folder": "Step_3",
+      "class_id": 3,
+      "action": "Step_3",
+      "fps": 30.0,
+      "total_frames": 405,
+      "duration_sec": 13.5
+    },
+    {
+      "filename": "HandWash_009_A_04_G_02.mp4",
+      "folder": "Step_3",
+      "class_id": 3,
+      "action": "Step_3",
+      "fps": 30.0,
+      "total_frames": 611,
+      "duration_sec": 20.37
+    },
+    {
+      "filename": "HandWash_010_A_04_G_02.mp4",
+      "folder": "Step_3",
+      "class_id": 3,
+      "action": "Step_3",
+      "fps": 30.0,
+      "total_frames": 538,
+      "duration_sec": 17.93
+    },
+    {
+      "filename": "HandWash_011_A_04_G_02.mp4",
+      "folder": "Step_3",
+      "class_id": 3,
+      "action": "Step_3",
+      "fps": 30.0,
+      "total_frames": 541,
+      "duration_sec": 18.03
+    },
+    {
+      "filename": "HandWash_012_A_04_G_03.mp4",
+      "folder": "Step_3",
+      "class_id": 3,
+      "action": "Step_3",
+      "fps": 30.0,
+      "total_frames": 336,
+      "duration_sec": 11.2
+    },
+    {
+      "filename": "HandWash_013_A_04_G_03.mp4",
+      "folder": "Step_3",
+      "class_id": 3,
+      "action": "Step_3",
+      "fps": 30.0,
+      "total_frames": 339,
+      "duration_sec": 11.3
+    },
+    {
+      "filename": "HandWash_014_A_04_G_03.mp4",
+      "folder": "Step_3",
+      "class_id": 3,
+      "action": "Step_3",
+      "fps": 30.0,
+      "total_frames": 339,
+      "duration_sec": 11.3
+    },
+    {
+      "filename": "HandWash_015_A_04_G_04.mp4",
+      "folder": "Step_3",
+      "class_id": 3,
+      "action": "Step_3",
+      "fps": 30.0,
+      "total_frames": 339,
+      "duration_sec": 11.3
+    },
+    {
+      "filename": "HandWash_016_A_04_G_04.mp4",
+      "folder": "Step_3",
+      "class_id": 3,
+      "action": "Step_3",
+      "fps": 30.0,
+      "total_frames": 272,
+      "duration_sec": 9.07
+    },
+    {
+      "filename": "HandWash_017_A_04_G_04.mp4",
+      "folder": "Step_3",
+      "class_id": 3,
+      "action": "Step_3",
+      "fps": 30.0,
+      "total_frames": 336,
+      "duration_sec": 11.2
+    },
+    {
+      "filename": "HandWash_018_A_04_G_05.mp4",
+      "folder": "Step_3",
+      "class_id": 3,
+      "action": "Step_3",
+      "fps": 30.0,
+      "total_frames": 306,
+      "duration_sec": 10.2
+    },
+    {
+      "filename": "HandWash_019_A_04_G_05.mp4",
+      "folder": "Step_3",
+      "class_id": 3,
+      "action": "Step_3",
+      "fps": 30.0,
+      "total_frames": 314,
+      "duration_sec": 10.47
+    },
+    {
+      "filename": "HandWash_020_A_04_G_05.mp4",
+      "folder": "Step_3",
+      "class_id": 3,
+      "action": "Step_3",
+      "fps": 30.0,
+      "total_frames": 492,
+      "duration_sec": 16.4
+    },
+    {
+      "filename": "HandWash_021_A_04_G_05.mp4",
+      "folder": "Step_3",
+      "class_id": 3,
+      "action": "Step_3",
+      "fps": 30.0,
+      "total_frames": 452,
+      "duration_sec": 15.07
+    },
+    {
+      "filename": "HandWash_022_A_04_G_05.mp4",
+      "folder": "Step_3",
+      "class_id": 3,
+      "action": "Step_3",
+      "fps": 30.0,
+      "total_frames": 403,
+      "duration_sec": 13.43
+    },
+    {
+      "filename": "HandWash_023_A_04_G_05.mp4",
+      "folder": "Step_3",
+      "class_id": 3,
+      "action": "Step_3",
+      "fps": 30.0,
+      "total_frames": 398,
+      "duration_sec": 13.27
+    },
+    {
+      "filename": "HandWash_024_A_04_G_05.mp4",
+      "folder": "Step_3",
+      "class_id": 3,
+      "action": "Step_3",
+      "fps": 30.0,
+      "total_frames": 298,
+      "duration_sec": 9.93
+    },
+    {
+      "filename": "HandWash_025_A_04_G_05.mp4",
+      "folder": "Step_3",
+      "class_id": 3,
+      "action": "Step_3",
+      "fps": 30.0,
+      "total_frames": 236,
+      "duration_sec": 7.87
+    },
+    {
+      "filename": "HandWash_001_A_05_G_01.mp4",
+      "folder": "Step_4_Left",
+      "class_id": 4,
+      "action": "Step_4",
+      "fps": 30.0,
+      "total_frames": 411,
+      "duration_sec": 13.7
+    },
+    {
+      "filename": "HandWash_002_A_05_G_01.mp4",
+      "folder": "Step_4_Left",
+      "class_id": 4,
+      "action": "Step_4",
+      "fps": 30.0,
+      "total_frames": 344,
+      "duration_sec": 11.47
+    },
+    {
+      "filename": "HandWash_003_A_05_G_01.mp4",
+      "folder": "Step_4_Left",
+      "class_id": 4,
+      "action": "Step_4",
+      "fps": 30.0,
+      "total_frames": 398,
+      "duration_sec": 13.27
+    },
+    {
+      "filename": "HandWash_004_A_05_G_01.mp4",
+      "folder": "Step_4_Left",
+      "class_id": 4,
+      "action": "Step_4",
+      "fps": 30.0,
+      "total_frames": 401,
+      "duration_sec": 13.37
+    },
+    {
+      "filename": "HandWash_005_A_05_G_01.mp4",
+      "folder": "Step_4_Left",
+      "class_id": 4,
+      "action": "Step_4",
+      "fps": 30.0,
+      "total_frames": 401,
+      "duration_sec": 13.37
+    },
+    {
+      "filename": "HandWash_006_A_05_G_01.mp4",
+      "folder": "Step_4_Left",
+      "class_id": 4,
+      "action": "Step_4",
+      "fps": 30.0,
+      "total_frames": 615,
+      "duration_sec": 20.5
+    },
+    {
+      "filename": "HandWash_007_A_05_G_01.mp4",
+      "folder": "Step_4_Left",
+      "class_id": 4,
+      "action": "Step_4",
+      "fps": 30.0,
+      "total_frames": 615,
+      "duration_sec": 20.5
+    },
+    {
+      "filename": "HandWash_008_A_05_G_01.mp4",
+      "folder": "Step_4_Left",
+      "class_id": 4,
+      "action": "Step_4",
+      "fps": 30.0,
+      "total_frames": 810,
+      "duration_sec": 27.0
+    },
+    {
+      "filename": "HandWash_009_A_05_G_02.mp4",
+      "folder": "Step_4_Left",
+      "class_id": 4,
+      "action": "Step_4",
+      "fps": 30.0,
+      "total_frames": 538,
+      "duration_sec": 17.93
+    },
+    {
+      "filename": "HandWash_010_A_05_G_02.mp4",
+      "folder": "Step_4_Left",
+      "class_id": 4,
+      "action": "Step_4",
+      "fps": 30.0,
+      "total_frames": 538,
+      "duration_sec": 17.93
+    },
+    {
+      "filename": "HandWash_011_A_05_G_02.mp4",
+      "folder": "Step_4_Left",
+      "class_id": 4,
+      "action": "Step_4",
+      "fps": 30.0,
+      "total_frames": 674,
+      "duration_sec": 22.47
+    },
+    {
+      "filename": "HandWash_012_A_05_G_03.mp4",
+      "folder": "Step_4_Left",
+      "class_id": 4,
+      "action": "Step_4",
+      "fps": 30.0,
+      "total_frames": 408,
+      "duration_sec": 13.6
+    },
+    {
+      "filename": "HandWash_013_A_05_G_03.mp4",
+      "folder": "Step_4_Left",
+      "class_id": 4,
+      "action": "Step_4",
+      "fps": 30.0,
+      "total_frames": 272,
+      "duration_sec": 9.07
+    },
+    {
+      "filename": "HandWash_014_A_05_G_03.mp4",
+      "folder": "Step_4_Left",
+      "class_id": 4,
+      "action": "Step_4",
+      "fps": 30.0,
+      "total_frames": 405,
+      "duration_sec": 13.5
+    },
+    {
+      "filename": "HandWash_015_A_05_G_04.mp4",
+      "folder": "Step_4_Left",
+      "class_id": 4,
+      "action": "Step_4",
+      "fps": 30.0,
+      "total_frames": 403,
+      "duration_sec": 13.43
+    },
+    {
+      "filename": "HandWash_016_A_05_G_04.mp4",
+      "folder": "Step_4_Left",
+      "class_id": 4,
+      "action": "Step_4",
+      "fps": 30.0,
+      "total_frames": 403,
+      "duration_sec": 13.43
+    },
+    {
+      "filename": "HandWash_017_A_05_G_04.mp4",
+      "folder": "Step_4_Left",
+      "class_id": 4,
+      "action": "Step_4",
+      "fps": 30.0,
+      "total_frames": 408,
+      "duration_sec": 13.6
+    },
+    {
+      "filename": "HandWash_018_A_05_G_05.mp4",
+      "folder": "Step_4_Left",
+      "class_id": 4,
+      "action": "Step_4",
+      "fps": 30.0,
+      "total_frames": 361,
+      "duration_sec": 12.03
+    },
+    {
+      "filename": "HandWash_019_A_05_G_05.mp4",
+      "folder": "Step_4_Left",
+      "class_id": 4,
+      "action": "Step_4",
+      "fps": 30.0,
+      "total_frames": 267,
+      "duration_sec": 8.9
+    },
+    {
+      "filename": "HandWash_020_A_05_G_05.mp4",
+      "folder": "Step_4_Left",
+      "class_id": 4,
+      "action": "Step_4",
+      "fps": 30.0,
+      "total_frames": 571,
+      "duration_sec": 19.03
+    },
+    {
+      "filename": "HandWash_021_A_05_G_05.mp4",
+      "folder": "Step_4_Left",
+      "class_id": 4,
+      "action": "Step_4",
+      "fps": 30.0,
+      "total_frames": 325,
+      "duration_sec": 10.83
+    },
+    {
+      "filename": "HandWash_022_A_05_G_05.mp4",
+      "folder": "Step_4_Left",
+      "class_id": 4,
+      "action": "Step_4",
+      "fps": 30.0,
+      "total_frames": 390,
+      "duration_sec": 13.0
+    },
+    {
+      "filename": "HandWash_023_A_05_G_05.mp4",
+      "folder": "Step_4_Left",
+      "class_id": 4,
+      "action": "Step_4",
+      "fps": 30.0,
+      "total_frames": 360,
+      "duration_sec": 12.0
+    },
+    {
+      "filename": "HandWash_024_A_05_G_05.mp4",
+      "folder": "Step_4_Left",
+      "class_id": 4,
+      "action": "Step_4",
+      "fps": 30.0,
+      "total_frames": 380,
+      "duration_sec": 12.67
+    },
+    {
+      "filename": "HandWash_025_A_05_G_05.mp4",
+      "folder": "Step_4_Left",
+      "class_id": 4,
+      "action": "Step_4",
+      "fps": 30.0,
+      "total_frames": 275,
+      "duration_sec": 9.17
+    },
+    {
+      "filename": "HandWash_001_A_06_G_01.mp4",
+      "folder": "Step_4_Right",
+      "class_id": 4,
+      "action": "Step_4",
+      "fps": 30.0,
+      "total_frames": 408,
+      "duration_sec": 13.6
+    },
+    {
+      "filename": "HandWash_002_A_06_G_01.mp4",
+      "folder": "Step_4_Right",
+      "class_id": 4,
+      "action": "Step_4",
+      "fps": 30.0,
+      "total_frames": 339,
+      "duration_sec": 11.3
+    },
+    {
+      "filename": "HandWash_003_A_06_G_01.mp4",
+      "folder": "Step_4_Right",
+      "class_id": 4,
+      "action": "Step_4",
+      "fps": 30.0,
+      "total_frames": 401,
+      "duration_sec": 13.37
+    },
+    {
+      "filename": "HandWash_004_A_06_G_01.mp4",
+      "folder": "Step_4_Right",
+      "class_id": 4,
+      "action": "Step_4",
+      "fps": 30.0,
+      "total_frames": 327,
+      "duration_sec": 10.9
+    },
+    {
+      "filename": "HandWash_005_A_06_G_01.mp4",
+      "folder": "Step_4_Right",
+      "class_id": 4,
+      "action": "Step_4",
+      "fps": 30.0,
+      "total_frames": 472,
+      "duration_sec": 15.73
+    },
+    {
+      "filename": "HandWash_006_A_06_G_01.mp4",
+      "folder": "Step_4_Right",
+      "class_id": 4,
+      "action": "Step_4",
+      "fps": 30.0,
+      "total_frames": 405,
+      "duration_sec": 13.5
+    },
+    {
+      "filename": "HandWash_007_A_06_G_01.mp4",
+      "folder": "Step_4_Right",
+      "class_id": 4,
+      "action": "Step_4",
+      "fps": 30.0,
+      "total_frames": 677,
+      "duration_sec": 22.57
+    },
+    {
+      "filename": "HandWash_008_A_06_G_01.mp4",
+      "folder": "Step_4_Right",
+      "class_id": 4,
+      "action": "Step_4",
+      "fps": 30.0,
+      "total_frames": 405,
+      "duration_sec": 13.5
+    },
+    {
+      "filename": "HandWash_009_A_06_G_02.mp4",
+      "folder": "Step_4_Right",
+      "class_id": 4,
+      "action": "Step_4",
+      "fps": 30.0,
+      "total_frames": 612,
+      "duration_sec": 20.4
+    },
+    {
+      "filename": "HandWash_010_A_06_G_02.mp4",
+      "folder": "Step_4_Right",
+      "class_id": 4,
+      "action": "Step_4",
+      "fps": 30.0,
+      "total_frames": 548,
+      "duration_sec": 18.27
+    },
+    {
+      "filename": "HandWash_011_A_06_G_02.mp4",
+      "folder": "Step_4_Right",
+      "class_id": 4,
+      "action": "Step_4",
+      "fps": 30.0,
+      "total_frames": 541,
+      "duration_sec": 18.03
+    },
+    {
+      "filename": "HandWash_012_A_06_G_03.mp4",
+      "folder": "Step_4_Right",
+      "class_id": 4,
+      "action": "Step_4",
+      "fps": 30.0,
+      "total_frames": 405,
+      "duration_sec": 13.5
+    },
+    {
+      "filename": "HandWash_013_A_06_G_03.mp4",
+      "folder": "Step_4_Right",
+      "class_id": 4,
+      "action": "Step_4",
+      "fps": 30.0,
+      "total_frames": 339,
+      "duration_sec": 11.3
+    },
+    {
+      "filename": "HandWash_014_A_06_G_03.mp4",
+      "folder": "Step_4_Right",
+      "class_id": 4,
+      "action": "Step_4",
+      "fps": 30.0,
+      "total_frames": 339,
+      "duration_sec": 11.3
+    },
+    {
+      "filename": "HandWash_015_A_06_G_04.mp4",
+      "folder": "Step_4_Right",
+      "class_id": 4,
+      "action": "Step_4",
+      "fps": 30.0,
+      "total_frames": 405,
+      "duration_sec": 13.5
+    },
+    {
+      "filename": "HandWash_016_A_06_G_04.mp4",
+      "folder": "Step_4_Right",
+      "class_id": 4,
+      "action": "Step_4",
+      "fps": 30.0,
+      "total_frames": 341,
+      "duration_sec": 11.37
+    },
+    {
+      "filename": "HandWash_017_A_06_G_04.mp4",
+      "folder": "Step_4_Right",
+      "class_id": 4,
+      "action": "Step_4",
+      "fps": 30.0,
+      "total_frames": 344,
+      "duration_sec": 11.47
+    },
+    {
+      "filename": "HandWash_018_A_06_G_05.mp4",
+      "folder": "Step_4_Right",
+      "class_id": 4,
+      "action": "Step_4",
+      "fps": 30.0,
+      "total_frames": 344,
+      "duration_sec": 11.47
+    },
+    {
+      "filename": "HandWash_019_A_06_G_05.mp4",
+      "folder": "Step_4_Right",
+      "class_id": 4,
+      "action": "Step_4",
+      "fps": 30.0,
+      "total_frames": 243,
+      "duration_sec": 8.1
+    },
+    {
+      "filename": "HandWash_020_A_06_G_05.mp4",
+      "folder": "Step_4_Right",
+      "class_id": 4,
+      "action": "Step_4",
+      "fps": 30.0,
+      "total_frames": 428,
+      "duration_sec": 14.27
+    },
+    {
+      "filename": "HandWash_021_A_06_G_05.mp4",
+      "folder": "Step_4_Right",
+      "class_id": 4,
+      "action": "Step_4",
+      "fps": 30.0,
+      "total_frames": 358,
+      "duration_sec": 11.93
+    },
+    {
+      "filename": "HandWash_022_A_06_G_05.mp4",
+      "folder": "Step_4_Right",
+      "class_id": 4,
+      "action": "Step_4",
+      "fps": 30.0,
+      "total_frames": 324,
+      "duration_sec": 10.8
+    },
+    {
+      "filename": "HandWash_023_A_06_G_05.mp4",
+      "folder": "Step_4_Right",
+      "class_id": 4,
+      "action": "Step_4",
+      "fps": 30.0,
+      "total_frames": 310,
+      "duration_sec": 10.33
+    },
+    {
+      "filename": "HandWash_024_A_06_G_05.mp4",
+      "folder": "Step_4_Right",
+      "class_id": 4,
+      "action": "Step_4",
+      "fps": 30.0,
+      "total_frames": 294,
+      "duration_sec": 9.8
+    },
+    {
+      "filename": "HandWash_025_A_06_G_05.mp4",
+      "folder": "Step_4_Right",
+      "class_id": 4,
+      "action": "Step_4",
+      "fps": 30.0,
+      "total_frames": 211,
+      "duration_sec": 7.03
+    },
+    {
+      "filename": "HandWash_001_A_07_G_01.mp4",
+      "folder": "Step_5_Left",
+      "class_id": 5,
+      "action": "Step_5",
+      "fps": 30.0,
+      "total_frames": 339,
+      "duration_sec": 11.3
+    },
+    {
+      "filename": "HandWash_002_A_07_G_01.mp4",
+      "folder": "Step_5_Left",
+      "class_id": 5,
+      "action": "Step_5",
+      "fps": 30.0,
+      "total_frames": 270,
+      "duration_sec": 9.0
+    },
+    {
+      "filename": "HandWash_003_A_07_G_01.mp4",
+      "folder": "Step_5_Left",
+      "class_id": 5,
+      "action": "Step_5",
+      "fps": 30.0,
+      "total_frames": 251,
+      "duration_sec": 8.37
+    },
+    {
+      "filename": "HandWash_004_A_07_G_01.mp4",
+      "folder": "Step_5_Left",
+      "class_id": 5,
+      "action": "Step_5",
+      "fps": 30.0,
+      "total_frames": 251,
+      "duration_sec": 8.37
+    },
+    {
+      "filename": "HandWash_005_A_07_G_01.mp4",
+      "folder": "Step_5_Left",
+      "class_id": 5,
+      "action": "Step_5",
+      "fps": 30.0,
+      "total_frames": 251,
+      "duration_sec": 8.37
+    },
+    {
+      "filename": "HandWash_006_A_07_G_01.mp4",
+      "folder": "Step_5_Left",
+      "class_id": 5,
+      "action": "Step_5",
+      "fps": 30.0,
+      "total_frames": 474,
+      "duration_sec": 15.8
+    },
+    {
+      "filename": "HandWash_007_A_07_G_01.mp4",
+      "folder": "Step_5_Left",
+      "class_id": 5,
+      "action": "Step_5",
+      "fps": 30.0,
+      "total_frames": 541,
+      "duration_sec": 18.03
+    },
+    {
+      "filename": "HandWash_008_A_07_G_01.mp4",
+      "folder": "Step_5_Left",
+      "class_id": 5,
+      "action": "Step_5",
+      "fps": 30.0,
+      "total_frames": 810,
+      "duration_sec": 27.0
+    },
+    {
+      "filename": "HandWash_009_A_07_G_02.mp4",
+      "folder": "Step_5_Left",
+      "class_id": 5,
+      "action": "Step_5",
+      "fps": 30.0,
+      "total_frames": 474,
+      "duration_sec": 15.8
+    },
+    {
+      "filename": "HandWash_010_A_07_G_02.mp4",
+      "folder": "Step_5_Left",
+      "class_id": 5,
+      "action": "Step_5",
+      "fps": 30.0,
+      "total_frames": 544,
+      "duration_sec": 18.13
+    },
+    {
+      "filename": "HandWash_011_A_07_G_02.mp4",
+      "folder": "Step_5_Left",
+      "class_id": 5,
+      "action": "Step_5",
+      "fps": 30.0,
+      "total_frames": 542,
+      "duration_sec": 18.07
+    },
+    {
+      "filename": "HandWash_012_A_07_G_03.mp4",
+      "folder": "Step_5_Left",
+      "class_id": 5,
+      "action": "Step_5",
+      "fps": 30.0,
+      "total_frames": 336,
+      "duration_sec": 11.2
+    },
+    {
+      "filename": "HandWash_013_A_07_G_03.mp4",
+      "folder": "Step_5_Left",
+      "class_id": 5,
+      "action": "Step_5",
+      "fps": 30.0,
+      "total_frames": 400,
+      "duration_sec": 13.33
+    },
+    {
+      "filename": "HandWash_014_A_07_G_03.mp4",
+      "folder": "Step_5_Left",
+      "class_id": 5,
+      "action": "Step_5",
+      "fps": 30.0,
+      "total_frames": 408,
+      "duration_sec": 13.6
+    },
+    {
+      "filename": "HandWash_015_A_07_G_04.mp4",
+      "folder": "Step_5_Left",
+      "class_id": 5,
+      "action": "Step_5",
+      "fps": 30.0,
+      "total_frames": 341,
+      "duration_sec": 11.37
+    },
+    {
+      "filename": "HandWash_016_A_07_G_04.mp4",
+      "folder": "Step_5_Left",
+      "class_id": 5,
+      "action": "Step_5",
+      "fps": 30.0,
+      "total_frames": 405,
+      "duration_sec": 13.5
+    },
+    {
+      "filename": "HandWash_017_A_07_G_04.mp4",
+      "folder": "Step_5_Left",
+      "class_id": 5,
+      "action": "Step_5",
+      "fps": 30.0,
+      "total_frames": 403,
+      "duration_sec": 13.43
+    },
+    {
+      "filename": "HandWash_018_A_07_G_05.mp4",
+      "folder": "Step_5_Left",
+      "class_id": 5,
+      "action": "Step_5",
+      "fps": 30.0,
+      "total_frames": 381,
+      "duration_sec": 12.7
+    },
+    {
+      "filename": "HandWash_019_A_07_G_05.mp4",
+      "folder": "Step_5_Left",
+      "class_id": 5,
+      "action": "Step_5",
+      "fps": 30.0,
+      "total_frames": 272,
+      "duration_sec": 9.07
+    },
+    {
+      "filename": "HandWash_020_A_07_G_05.mp4",
+      "folder": "Step_5_Left",
+      "class_id": 5,
+      "action": "Step_5",
+      "fps": 30.0,
+      "total_frames": 321,
+      "duration_sec": 10.7
+    },
+    {
+      "filename": "HandWash_021_A_07_G_05.mp4",
+      "folder": "Step_5_Left",
+      "class_id": 5,
+      "action": "Step_5",
+      "fps": 30.0,
+      "total_frames": 616,
+      "duration_sec": 20.53
+    },
+    {
+      "filename": "HandWash_022_A_07_G_05.mp4",
+      "folder": "Step_5_Left",
+      "class_id": 5,
+      "action": "Step_5",
+      "fps": 30.0,
+      "total_frames": 360,
+      "duration_sec": 12.0
+    },
+    {
+      "filename": "HandWash_023_A_07_G_05.mp4",
+      "folder": "Step_5_Left",
+      "class_id": 5,
+      "action": "Step_5",
+      "fps": 30.0,
+      "total_frames": 454,
+      "duration_sec": 15.13
+    },
+    {
+      "filename": "HandWash_024_A_07_G_05.mp4",
+      "folder": "Step_5_Left",
+      "class_id": 5,
+      "action": "Step_5",
+      "fps": 30.0,
+      "total_frames": 344,
+      "duration_sec": 11.47
+    },
+    {
+      "filename": "HandWash_025_A_07_G_05.mp4",
+      "folder": "Step_5_Left",
+      "class_id": 5,
+      "action": "Step_5",
+      "fps": 30.0,
+      "total_frames": 396,
+      "duration_sec": 13.2
+    },
+    {
+      "filename": "HandWash_001_A_08_G_01.mp4",
+      "folder": "Step_5_Right",
+      "class_id": 5,
+      "action": "Step_5",
+      "fps": 30.0,
+      "total_frames": 336,
+      "duration_sec": 11.2
+    },
+    {
+      "filename": "HandWash_002_A_08_G_01.mp4",
+      "folder": "Step_5_Right",
+      "class_id": 5,
+      "action": "Step_5",
+      "fps": 30.0,
+      "total_frames": 270,
+      "duration_sec": 9.0
+    },
+    {
+      "filename": "HandWash_003_A_08_G_01.mp4",
+      "folder": "Step_5_Right",
+      "class_id": 5,
+      "action": "Step_5",
+      "fps": 30.0,
+      "total_frames": 325,
+      "duration_sec": 10.83
+    },
+    {
+      "filename": "HandWash_004_A_08_G_01.mp4",
+      "folder": "Step_5_Right",
+      "class_id": 5,
+      "action": "Step_5",
+      "fps": 30.0,
+      "total_frames": 253,
+      "duration_sec": 8.43
+    },
+    {
+      "filename": "HandWash_005_A_08_G_01.mp4",
+      "folder": "Step_5_Right",
+      "class_id": 5,
+      "action": "Step_5",
+      "fps": 30.0,
+      "total_frames": 180,
+      "duration_sec": 6.0
+    },
+    {
+      "filename": "HandWash_006_A_08_G_01.mp4",
+      "folder": "Step_5_Right",
+      "class_id": 5,
+      "action": "Step_5",
+      "fps": 30.0,
+      "total_frames": 536,
+      "duration_sec": 17.87
+    },
+    {
+      "filename": "HandWash_007_A_08_G_01.mp4",
+      "folder": "Step_5_Right",
+      "class_id": 5,
+      "action": "Step_5",
+      "fps": 30.0,
+      "total_frames": 403,
+      "duration_sec": 13.43
+    },
+    {
+      "filename": "HandWash_008_A_08_G_01.mp4",
+      "folder": "Step_5_Right",
+      "class_id": 5,
+      "action": "Step_5",
+      "fps": 30.0,
+      "total_frames": 743,
+      "duration_sec": 24.77
+    },
+    {
+      "filename": "HandWash_009_A_08_G_02.mp4",
+      "folder": "Step_5_Right",
+      "class_id": 5,
+      "action": "Step_5",
+      "fps": 30.0,
+      "total_frames": 542,
+      "duration_sec": 18.07
+    },
+    {
+      "filename": "HandWash_010_A_08_G_02.mp4",
+      "folder": "Step_5_Right",
+      "class_id": 5,
+      "action": "Step_5",
+      "fps": 30.0,
+      "total_frames": 610,
+      "duration_sec": 20.33
+    },
+    {
+      "filename": "HandWash_011_A_08_G_02.mp4",
+      "folder": "Step_5_Right",
+      "class_id": 5,
+      "action": "Step_5",
+      "fps": 30.0,
+      "total_frames": 407,
+      "duration_sec": 13.57
+    },
+    {
+      "filename": "HandWash_012_A_08_G_03.mp4",
+      "folder": "Step_5_Right",
+      "class_id": 5,
+      "action": "Step_5",
+      "fps": 30.0,
+      "total_frames": 462,
+      "duration_sec": 15.4
+    },
+    {
+      "filename": "HandWash_013_A_08_G_03.mp4",
+      "folder": "Step_5_Right",
+      "class_id": 5,
+      "action": "Step_5",
+      "fps": 30.0,
+      "total_frames": 393,
+      "duration_sec": 13.1
+    },
+    {
+      "filename": "HandWash_014_A_08_G_03.mp4",
+      "folder": "Step_5_Right",
+      "class_id": 5,
+      "action": "Step_5",
+      "fps": 30.0,
+      "total_frames": 528,
+      "duration_sec": 17.6
+    },
+    {
+      "filename": "HandWash_015_A_08_G_04.mp4",
+      "folder": "Step_5_Right",
+      "class_id": 5,
+      "action": "Step_5",
+      "fps": 30.0,
+      "total_frames": 267,
+      "duration_sec": 8.9
+    },
+    {
+      "filename": "HandWash_016_A_08_G_04.mp4",
+      "folder": "Step_5_Right",
+      "class_id": 5,
+      "action": "Step_5",
+      "fps": 30.0,
+      "total_frames": 538,
+      "duration_sec": 17.93
+    },
+    {
+      "filename": "HandWash_017_A_08_G_04.mp4",
+      "folder": "Step_5_Right",
+      "class_id": 5,
+      "action": "Step_5",
+      "fps": 30.0,
+      "total_frames": 469,
+      "duration_sec": 15.63
+    },
+    {
+      "filename": "HandWash_018_A_08_G_05.mp4",
+      "folder": "Step_5_Right",
+      "class_id": 5,
+      "action": "Step_5",
+      "fps": 30.0,
+      "total_frames": 358,
+      "duration_sec": 11.93
+    },
+    {
+      "filename": "HandWash_019_A_08_G_05.mp4",
+      "folder": "Step_5_Right",
+      "class_id": 5,
+      "action": "Step_5",
+      "fps": 30.0,
+      "total_frames": 262,
+      "duration_sec": 8.73
+    },
+    {
+      "filename": "HandWash_020_A_08_G_05.mp4",
+      "folder": "Step_5_Right",
+      "class_id": 5,
+      "action": "Step_5",
+      "fps": 30.0,
+      "total_frames": 387,
+      "duration_sec": 12.9
+    },
+    {
+      "filename": "HandWash_021_A_08_G_05.mp4",
+      "folder": "Step_5_Right",
+      "class_id": 5,
+      "action": "Step_5",
+      "fps": 30.0,
+      "total_frames": 385,
+      "duration_sec": 12.83
+    },
+    {
+      "filename": "HandWash_022_A_08_G_05.mp4",
+      "folder": "Step_5_Right",
+      "class_id": 5,
+      "action": "Step_5",
+      "fps": 30.0,
+      "total_frames": 340,
+      "duration_sec": 11.33
+    },
+    {
+      "filename": "HandWash_023_A_08_G_05.mp4",
+      "folder": "Step_5_Right",
+      "class_id": 5,
+      "action": "Step_5",
+      "fps": 30.0,
+      "total_frames": 370,
+      "duration_sec": 12.33
+    },
+    {
+      "filename": "HandWash_024_A_08_G_05.mp4",
+      "folder": "Step_5_Right",
+      "class_id": 5,
+      "action": "Step_5",
+      "fps": 30.0,
+      "total_frames": 256,
+      "duration_sec": 8.53
+    },
+    {
+      "filename": "HandWash_025_A_08_G_05.mp4",
+      "folder": "Step_5_Right",
+      "class_id": 5,
+      "action": "Step_5",
+      "fps": 30.0,
+      "total_frames": 192,
+      "duration_sec": 6.4
+    },
+    {
+      "filename": "HandWash_001_A_09_G_01.mp4",
+      "folder": "Step_6_Left",
+      "class_id": 6,
+      "action": "Step_6",
+      "fps": 30.0,
+      "total_frames": 272,
+      "duration_sec": 9.07
+    },
+    {
+      "filename": "HandWash_002_A_09_G_01.mp4",
+      "folder": "Step_6_Left",
+      "class_id": 6,
+      "action": "Step_6",
+      "fps": 30.0,
+      "total_frames": 270,
+      "duration_sec": 9.0
+    },
+    {
+      "filename": "HandWash_003_A_09_G_01.mp4",
+      "folder": "Step_6_Left",
+      "class_id": 6,
+      "action": "Step_6",
+      "fps": 30.0,
+      "total_frames": 330,
+      "duration_sec": 11.0
+    },
+    {
+      "filename": "HandWash_004_A_09_G_01.mp4",
+      "folder": "Step_6_Left",
+      "class_id": 6,
+      "action": "Step_6",
+      "fps": 30.0,
+      "total_frames": 333,
+      "duration_sec": 11.1
+    },
+    {
+      "filename": "HandWash_005_A_09_G_01.mp4",
+      "folder": "Step_6_Left",
+      "class_id": 6,
+      "action": "Step_6",
+      "fps": 30.0,
+      "total_frames": 407,
+      "duration_sec": 13.57
+    },
+    {
+      "filename": "HandWash_006_A_09_G_01.mp4",
+      "folder": "Step_6_Left",
+      "class_id": 6,
+      "action": "Step_6",
+      "fps": 30.0,
+      "total_frames": 469,
+      "duration_sec": 15.63
+    },
+    {
+      "filename": "HandWash_007_A_09_G_01.mp4",
+      "folder": "Step_6_Left",
+      "class_id": 6,
+      "action": "Step_6",
+      "fps": 30.0,
+      "total_frames": 538,
+      "duration_sec": 17.93
+    },
+    {
+      "filename": "HandWash_008_A_09_G_01.mp4",
+      "folder": "Step_6_Left",
+      "class_id": 6,
+      "action": "Step_6",
+      "fps": 30.0,
+      "total_frames": 743,
+      "duration_sec": 24.77
+    },
+    {
+      "filename": "HandWash_009_A_09_G_02.mp4",
+      "folder": "Step_6_Left",
+      "class_id": 6,
+      "action": "Step_6",
+      "fps": 30.0,
+      "total_frames": 271,
+      "duration_sec": 9.03
+    },
+    {
+      "filename": "HandWash_010_A_09_G_02.mp4",
+      "folder": "Step_6_Left",
+      "class_id": 6,
+      "action": "Step_6",
+      "fps": 30.0,
+      "total_frames": 404,
+      "duration_sec": 13.47
+    },
+    {
+      "filename": "HandWash_011_A_09_G_02.mp4",
+      "folder": "Step_6_Left",
+      "class_id": 6,
+      "action": "Step_6",
+      "fps": 30.0,
+      "total_frames": 338,
+      "duration_sec": 11.27
+    },
+    {
+      "filename": "HandWash_012_A_09_G_03.mp4",
+      "folder": "Step_6_Left",
+      "class_id": 6,
+      "action": "Step_6",
+      "fps": 30.0,
+      "total_frames": 459,
+      "duration_sec": 15.3
+    },
+    {
+      "filename": "HandWash_013_A_09_G_03.mp4",
+      "folder": "Step_6_Left",
+      "class_id": 6,
+      "action": "Step_6",
+      "fps": 30.0,
+      "total_frames": 262,
+      "duration_sec": 8.73
+    },
+    {
+      "filename": "HandWash_014_A_09_G_03.mp4",
+      "folder": "Step_6_Left",
+      "class_id": 6,
+      "action": "Step_6",
+      "fps": 30.0,
+      "total_frames": 398,
+      "duration_sec": 13.27
+    },
+    {
+      "filename": "HandWash_015_A_09_G_04.mp4",
+      "folder": "Step_6_Left",
+      "class_id": 6,
+      "action": "Step_6",
+      "fps": 30.0,
+      "total_frames": 400,
+      "duration_sec": 13.33
+    },
+    {
+      "filename": "HandWash_016_A_09_G_04.mp4",
+      "folder": "Step_6_Left",
+      "class_id": 6,
+      "action": "Step_6",
+      "fps": 30.0,
+      "total_frames": 536,
+      "duration_sec": 17.87
+    },
+    {
+      "filename": "HandWash_017_A_09_G_04.mp4",
+      "folder": "Step_6_Left",
+      "class_id": 6,
+      "action": "Step_6",
+      "fps": 30.0,
+      "total_frames": 400,
+      "duration_sec": 13.33
+    },
+    {
+      "filename": "HandWash_018_A_09_G_05.mp4",
+      "folder": "Step_6_Left",
+      "class_id": 6,
+      "action": "Step_6",
+      "fps": 30.0,
+      "total_frames": 444,
+      "duration_sec": 14.8
+    },
+    {
+      "filename": "HandWash_019_A_09_G_05.mp4",
+      "folder": "Step_6_Left",
+      "class_id": 6,
+      "action": "Step_6",
+      "fps": 30.0,
+      "total_frames": 326,
+      "duration_sec": 10.87
+    },
+    {
+      "filename": "HandWash_020_A_09_G_05.mp4",
+      "folder": "Step_6_Left",
+      "class_id": 6,
+      "action": "Step_6",
+      "fps": 30.0,
+      "total_frames": 305,
+      "duration_sec": 10.17
+    },
+    {
+      "filename": "HandWash_021_A_09_G_05.mp4",
+      "folder": "Step_6_Left",
+      "class_id": 6,
+      "action": "Step_6",
+      "fps": 30.0,
+      "total_frames": 335,
+      "duration_sec": 11.17
+    },
+    {
+      "filename": "HandWash_022_A_09_G_05.mp4",
+      "folder": "Step_6_Left",
+      "class_id": 6,
+      "action": "Step_6",
+      "fps": 30.0,
+      "total_frames": 350,
+      "duration_sec": 11.67
+    },
+    {
+      "filename": "HandWash_023_A_09_G_05.mp4",
+      "folder": "Step_6_Left",
+      "class_id": 6,
+      "action": "Step_6",
+      "fps": 30.0,
+      "total_frames": 173,
+      "duration_sec": 5.77
+    },
+    {
+      "filename": "HandWash_024_A_09_G_05.mp4",
+      "folder": "Step_6_Left",
+      "class_id": 6,
+      "action": "Step_6",
+      "fps": 30.0,
+      "total_frames": 242,
+      "duration_sec": 8.07
+    },
+    {
+      "filename": "HandWash_025_A_09_G_05.mp4",
+      "folder": "Step_6_Left",
+      "class_id": 6,
+      "action": "Step_6",
+      "fps": 30.0,
+      "total_frames": 244,
+      "duration_sec": 8.13
+    },
+    {
+      "filename": "HandWash_001_A_10_G_01.mp4",
+      "folder": "Step_6_Right",
+      "class_id": 6,
+      "action": "Step_6",
+      "fps": 30.0,
+      "total_frames": 334,
+      "duration_sec": 11.13
+    },
+    {
+      "filename": "HandWash_002_A_10_G_01.mp4",
+      "folder": "Step_6_Right",
+      "class_id": 6,
+      "action": "Step_6",
+      "fps": 30.0,
+      "total_frames": 334,
+      "duration_sec": 11.13
+    },
+    {
+      "filename": "HandWash_003_A_10_G_01.mp4",
+      "folder": "Step_6_Right",
+      "class_id": 6,
+      "action": "Step_6",
+      "fps": 30.0,
+      "total_frames": 325,
+      "duration_sec": 10.83
+    },
+    {
+      "filename": "HandWash_004_A_10_G_01.mp4",
+      "folder": "Step_6_Right",
+      "class_id": 6,
+      "action": "Step_6",
+      "fps": 30.0,
+      "total_frames": 180,
+      "duration_sec": 6.0
+    },
+    {
+      "filename": "HandWash_005_A_10_G_01.mp4",
+      "folder": "Step_6_Right",
+      "class_id": 6,
+      "action": "Step_6",
+      "fps": 30.0,
+      "total_frames": 327,
+      "duration_sec": 10.9
+    },
+    {
+      "filename": "HandWash_006_A_10_G_01.mp4",
+      "folder": "Step_6_Right",
+      "class_id": 6,
+      "action": "Step_6",
+      "fps": 30.0,
+      "total_frames": 541,
+      "duration_sec": 18.03
+    },
+    {
+      "filename": "HandWash_007_A_10_G_01.mp4",
+      "folder": "Step_6_Right",
+      "class_id": 6,
+      "action": "Step_6",
+      "fps": 30.0,
+      "total_frames": 610,
+      "duration_sec": 20.33
+    },
+    {
+      "filename": "HandWash_008_A_10_G_01.mp4",
+      "folder": "Step_6_Right",
+      "class_id": 6,
+      "action": "Step_6",
+      "fps": 30.0,
+      "total_frames": 541,
+      "duration_sec": 18.03
+    },
+    {
+      "filename": "HandWash_009_A_10_G_02.mp4",
+      "folder": "Step_6_Right",
+      "class_id": 6,
+      "action": "Step_6",
+      "fps": 30.0,
+      "total_frames": 274,
+      "duration_sec": 9.13
+    },
+    {
+      "filename": "HandWash_010_A_10_G_02.mp4",
+      "folder": "Step_6_Right",
+      "class_id": 6,
+      "action": "Step_6",
+      "fps": 30.0,
+      "total_frames": 274,
+      "duration_sec": 9.13
+    },
+    {
+      "filename": "HandWash_011_A_10_G_02.mp4",
+      "folder": "Step_6_Right",
+      "class_id": 6,
+      "action": "Step_6",
+      "fps": 30.0,
+      "total_frames": 279,
+      "duration_sec": 9.3
+    },
+    {
+      "filename": "HandWash_012_A_10_G_03.mp4",
+      "folder": "Step_6_Right",
+      "class_id": 6,
+      "action": "Step_6",
+      "fps": 30.0,
+      "total_frames": 201,
+      "duration_sec": 6.7
+    },
+    {
+      "filename": "HandWash_013_A_10_G_03.mp4",
+      "folder": "Step_6_Right",
+      "class_id": 6,
+      "action": "Step_6",
+      "fps": 30.0,
+      "total_frames": 408,
+      "duration_sec": 13.6
+    },
+    {
+      "filename": "HandWash_014_A_10_G_03.mp4",
+      "folder": "Step_6_Right",
+      "class_id": 6,
+      "action": "Step_6",
+      "fps": 30.0,
+      "total_frames": 201,
+      "duration_sec": 6.7
+    },
+    {
+      "filename": "HandWash_015_A_10_G_04.mp4",
+      "folder": "Step_6_Right",
+      "class_id": 6,
+      "action": "Step_6",
+      "fps": 30.0,
+      "total_frames": 474,
+      "duration_sec": 15.8
+    },
+    {
+      "filename": "HandWash_016_A_10_G_04.mp4",
+      "folder": "Step_6_Right",
+      "class_id": 6,
+      "action": "Step_6",
+      "fps": 30.0,
+      "total_frames": 474,
+      "duration_sec": 15.8
+    },
+    {
+      "filename": "HandWash_017_A_10_G_04.mp4",
+      "folder": "Step_6_Right",
+      "class_id": 6,
+      "action": "Step_6",
+      "fps": 30.0,
+      "total_frames": 341,
+      "duration_sec": 11.37
+    },
+    {
+      "filename": "HandWash_018_A_10_G_05.mp4",
+      "folder": "Step_6_Right",
+      "class_id": 6,
+      "action": "Step_6",
+      "fps": 30.0,
+      "total_frames": 223,
+      "duration_sec": 7.43
+    },
+    {
+      "filename": "HandWash_019_A_10_G_05.mp4",
+      "folder": "Step_6_Right",
+      "class_id": 6,
+      "action": "Step_6",
+      "fps": 30.0,
+      "total_frames": 351,
+      "duration_sec": 11.7
+    },
+    {
+      "filename": "HandWash_020_A_10_G_05.mp4",
+      "folder": "Step_6_Right",
+      "class_id": 6,
+      "action": "Step_6",
+      "fps": 30.0,
+      "total_frames": 257,
+      "duration_sec": 8.57
+    },
+    {
+      "filename": "HandWash_021_A_10_G_05.mp4",
+      "folder": "Step_6_Right",
+      "class_id": 6,
+      "action": "Step_6",
+      "fps": 30.0,
+      "total_frames": 375,
+      "duration_sec": 12.5
+    },
+    {
+      "filename": "HandWash_022_A_10_G_05.mp4",
+      "folder": "Step_6_Right",
+      "class_id": 6,
+      "action": "Step_6",
+      "fps": 30.0,
+      "total_frames": 297,
+      "duration_sec": 9.9
+    },
+    {
+      "filename": "HandWash_023_A_10_G_05.mp4",
+      "folder": "Step_6_Right",
+      "class_id": 6,
+      "action": "Step_6",
+      "fps": 30.0,
+      "total_frames": 232,
+      "duration_sec": 7.73
+    },
+    {
+      "filename": "HandWash_024_A_10_G_05.mp4",
+      "folder": "Step_6_Right",
+      "class_id": 6,
+      "action": "Step_6",
+      "fps": 30.0,
+      "total_frames": 286,
+      "duration_sec": 9.53
+    },
+    {
+      "filename": "HandWash_025_A_10_G_05.mp4",
+      "folder": "Step_6_Right",
+      "class_id": 6,
+      "action": "Step_6",
+      "fps": 30.0,
+      "total_frames": 288,
+      "duration_sec": 9.6
+    },
+    {
+      "filename": "HandWash_001_A_11_G_01.mp4",
+      "folder": "Step_7_Left",
+      "class_id": 0,
+      "action": "Step_7_Wrists_Negative",
+      "fps": 30.0,
+      "total_frames": 129,
+      "duration_sec": 4.3
+    },
+    {
+      "filename": "HandWash_002_A_11_G_01.mp4",
+      "folder": "Step_7_Left",
+      "class_id": 0,
+      "action": "Step_7_Wrists_Negative",
+      "fps": 30.0,
+      "total_frames": 251,
+      "duration_sec": 8.37
+    },
+    {
+      "filename": "HandWash_003_A_11_G_01.mp4",
+      "folder": "Step_7_Left",
+      "class_id": 0,
+      "action": "Step_7_Wrists_Negative",
+      "fps": 30.0,
+      "total_frames": 253,
+      "duration_sec": 8.43
+    },
+    {
+      "filename": "HandWash_004_A_11_G_01.mp4",
+      "folder": "Step_7_Left",
+      "class_id": 0,
+      "action": "Step_7_Wrists_Negative",
+      "fps": 30.0,
+      "total_frames": 327,
+      "duration_sec": 10.9
+    },
+    {
+      "filename": "HandWash_005_A_11_G_01.mp4",
+      "folder": "Step_7_Left",
+      "class_id": 0,
+      "action": "Step_7_Wrists_Negative",
+      "fps": 30.0,
+      "total_frames": 253,
+      "duration_sec": 8.43
+    },
+    {
+      "filename": "HandWash_006_A_11_G_01.mp4",
+      "folder": "Step_7_Left",
+      "class_id": 0,
+      "action": "Step_7_Wrists_Negative",
+      "fps": 30.0,
+      "total_frames": 541,
+      "duration_sec": 18.03
+    },
+    {
+      "filename": "HandWash_007_A_11_G_01.mp4",
+      "folder": "Step_7_Left",
+      "class_id": 0,
+      "action": "Step_7_Wrists_Negative",
+      "fps": 30.0,
+      "total_frames": 541,
+      "duration_sec": 18.03
+    },
+    {
+      "filename": "HandWash_008_A_11_G_01.mp4",
+      "folder": "Step_7_Left",
+      "class_id": 0,
+      "action": "Step_7_Wrists_Negative",
+      "fps": 30.0,
+      "total_frames": 544,
+      "duration_sec": 18.13
+    },
+    {
+      "filename": "HandWash_009_A_11_G_02.mp4",
+      "folder": "Step_7_Left",
+      "class_id": 0,
+      "action": "Step_7_Wrists_Negative",
+      "fps": 30.0,
+      "total_frames": 276,
+      "duration_sec": 9.2
+    },
+    {
+      "filename": "HandWash_010_A_11_G_02.mp4",
+      "folder": "Step_7_Left",
+      "class_id": 0,
+      "action": "Step_7_Wrists_Negative",
+      "fps": 30.0,
+      "total_frames": 279,
+      "duration_sec": 9.3
+    },
+    {
+      "filename": "HandWash_011_A_11_G_02.mp4",
+      "folder": "Step_7_Left",
+      "class_id": 0,
+      "action": "Step_7_Wrists_Negative",
+      "fps": 30.0,
+      "total_frames": 279,
+      "duration_sec": 9.3
+    },
+    {
+      "filename": "HandWash_012_A_11_G_03.mp4",
+      "folder": "Step_7_Left",
+      "class_id": 0,
+      "action": "Step_7_Wrists_Negative",
+      "fps": 30.0,
+      "total_frames": 267,
+      "duration_sec": 8.9
+    },
+    {
+      "filename": "HandWash_013_A_11_G_03.mp4",
+      "folder": "Step_7_Left",
+      "class_id": 0,
+      "action": "Step_7_Wrists_Negative",
+      "fps": 30.0,
+      "total_frames": 270,
+      "duration_sec": 9.0
+    },
+    {
+      "filename": "HandWash_014_A_11_G_03.mp4",
+      "folder": "Step_7_Left",
+      "class_id": 0,
+      "action": "Step_7_Wrists_Negative",
+      "fps": 30.0,
+      "total_frames": 272,
+      "duration_sec": 9.07
+    },
+    {
+      "filename": "HandWash_015_A_11_G_04.mp4",
+      "folder": "Step_7_Left",
+      "class_id": 0,
+      "action": "Step_7_Wrists_Negative",
+      "fps": 30.0,
+      "total_frames": 203,
+      "duration_sec": 6.77
+    },
+    {
+      "filename": "HandWash_016_A_11_G_04.mp4",
+      "folder": "Step_7_Left",
+      "class_id": 0,
+      "action": "Step_7_Wrists_Negative",
+      "fps": 30.0,
+      "total_frames": 607,
+      "duration_sec": 20.23
+    },
+    {
+      "filename": "HandWash_017_A_11_G_04.mp4",
+      "folder": "Step_7_Left",
+      "class_id": 0,
+      "action": "Step_7_Wrists_Negative",
+      "fps": 30.0,
+      "total_frames": 541,
+      "duration_sec": 18.03
+    },
+    {
+      "filename": "HandWash_018_A_11_G_05.mp4",
+      "folder": "Step_7_Left",
+      "class_id": 0,
+      "action": "Step_7_Wrists_Negative",
+      "fps": 30.0,
+      "total_frames": 320,
+      "duration_sec": 10.67
+    },
+    {
+      "filename": "HandWash_019_A_11_G_05.mp4",
+      "folder": "Step_7_Left",
+      "class_id": 0,
+      "action": "Step_7_Wrists_Negative",
+      "fps": 30.0,
+      "total_frames": 243,
+      "duration_sec": 8.1
+    },
+    {
+      "filename": "HandWash_020_A_11_G_05.mp4",
+      "folder": "Step_7_Left",
+      "class_id": 0,
+      "action": "Step_7_Wrists_Negative",
+      "fps": 30.0,
+      "total_frames": 251,
+      "duration_sec": 8.37
+    },
+    {
+      "filename": "HandWash_021_A_11_G_05.mp4",
+      "folder": "Step_7_Left",
+      "class_id": 0,
+      "action": "Step_7_Wrists_Negative",
+      "fps": 30.0,
+      "total_frames": 432,
+      "duration_sec": 14.4
+    },
+    {
+      "filename": "HandWash_022_A_11_G_05.mp4",
+      "folder": "Step_7_Left",
+      "class_id": 0,
+      "action": "Step_7_Wrists_Negative",
+      "fps": 30.0,
+      "total_frames": 370,
+      "duration_sec": 12.33
+    },
+    {
+      "filename": "HandWash_023_A_11_G_05.mp4",
+      "folder": "Step_7_Left",
+      "class_id": 0,
+      "action": "Step_7_Wrists_Negative",
+      "fps": 30.0,
+      "total_frames": 338,
+      "duration_sec": 11.27
+    },
+    {
+      "filename": "HandWash_024_A_11_G_05.mp4",
+      "folder": "Step_7_Left",
+      "class_id": 0,
+      "action": "Step_7_Wrists_Negative",
+      "fps": 30.0,
+      "total_frames": 270,
+      "duration_sec": 9.0
+    },
+    {
+      "filename": "HandWash_025_A_11_G_05.mp4",
+      "folder": "Step_7_Left",
+      "class_id": 0,
+      "action": "Step_7_Wrists_Negative",
+      "fps": 30.0,
+      "total_frames": 357,
+      "duration_sec": 11.9
+    },
+    {
+      "filename": "HandWash_001_A_12_G_01.mp4",
+      "folder": "Step_7_Right",
+      "class_id": 0,
+      "action": "Step_7_Wrists_Negative",
+      "fps": 30.0,
+      "total_frames": 196,
+      "duration_sec": 6.53
+    },
+    {
+      "filename": "HandWash_002_A_12_G_01.mp4",
+      "folder": "Step_7_Right",
+      "class_id": 0,
+      "action": "Step_7_Wrists_Negative",
+      "fps": 30.0,
+      "total_frames": 180,
+      "duration_sec": 6.0
+    },
+    {
+      "filename": "HandWash_003_A_12_G_01.mp4",
+      "folder": "Step_7_Right",
+      "class_id": 0,
+      "action": "Step_7_Wrists_Negative",
+      "fps": 30.0,
+      "total_frames": 253,
+      "duration_sec": 8.43
+    },
+    {
+      "filename": "HandWash_004_A_12_G_01.mp4",
+      "folder": "Step_7_Right",
+      "class_id": 0,
+      "action": "Step_7_Wrists_Negative",
+      "fps": 30.0,
+      "total_frames": 180,
+      "duration_sec": 6.0
+    },
+    {
+      "filename": "HandWash_005_A_12_G_01.mp4",
+      "folder": "Step_7_Right",
+      "class_id": 0,
+      "action": "Step_7_Wrists_Negative",
+      "fps": 30.0,
+      "total_frames": 253,
+      "duration_sec": 8.43
+    },
+    {
+      "filename": "HandWash_006_A_12_G_01.mp4",
+      "folder": "Step_7_Right",
+      "class_id": 0,
+      "action": "Step_7_Wrists_Negative",
+      "fps": 30.0,
+      "total_frames": 474,
+      "duration_sec": 15.8
+    },
+    {
+      "filename": "HandWash_007_A_12_G_01.mp4",
+      "folder": "Step_7_Right",
+      "class_id": 0,
+      "action": "Step_7_Wrists_Negative",
+      "fps": 30.0,
+      "total_frames": 607,
+      "duration_sec": 20.23
+    },
+    {
+      "filename": "HandWash_008_A_12_G_01.mp4",
+      "folder": "Step_7_Right",
+      "class_id": 0,
+      "action": "Step_7_Wrists_Negative",
+      "fps": 30.0,
+      "total_frames": 538,
+      "duration_sec": 17.93
+    },
+    {
+      "filename": "HandWash_009_A_12_G_02.mp4",
+      "folder": "Step_7_Right",
+      "class_id": 0,
+      "action": "Step_7_Wrists_Negative",
+      "fps": 30.0,
+      "total_frames": 414,
+      "duration_sec": 13.8
+    },
+    {
+      "filename": "HandWash_010_A_12_G_02.mp4",
+      "folder": "Step_7_Right",
+      "class_id": 0,
+      "action": "Step_7_Wrists_Negative",
+      "fps": 30.0,
+      "total_frames": 279,
+      "duration_sec": 9.3
+    },
+    {
+      "filename": "HandWash_011_A_12_G_02.mp4",
+      "folder": "Step_7_Right",
+      "class_id": 0,
+      "action": "Step_7_Wrists_Negative",
+      "fps": 30.0,
+      "total_frames": 201,
+      "duration_sec": 6.7
+    },
+    {
+      "filename": "HandWash_012_A_12_G_03.mp4",
+      "folder": "Step_7_Right",
+      "class_id": 0,
+      "action": "Step_7_Wrists_Negative",
+      "fps": 30.0,
+      "total_frames": 270,
+      "duration_sec": 9.0
+    },
+    {
+      "filename": "HandWash_013_A_12_G_03.mp4",
+      "folder": "Step_7_Right",
+      "class_id": 0,
+      "action": "Step_7_Wrists_Negative",
+      "fps": 30.0,
+      "total_frames": 477,
+      "duration_sec": 15.9
+    },
+    {
+      "filename": "HandWash_014_A_12_G_03.mp4",
+      "folder": "Step_7_Right",
+      "class_id": 0,
+      "action": "Step_7_Wrists_Negative",
+      "fps": 30.0,
+      "total_frames": 270,
+      "duration_sec": 9.0
+    },
+    {
+      "filename": "HandWash_015_A_12_G_04.mp4",
+      "folder": "Step_7_Right",
+      "class_id": 0,
+      "action": "Step_7_Wrists_Negative",
+      "fps": 30.0,
+      "total_frames": 270,
+      "duration_sec": 9.0
+    },
+    {
+      "filename": "HandWash_016_A_12_G_04.mp4",
+      "folder": "Step_7_Right",
+      "class_id": 0,
+      "action": "Step_7_Wrists_Negative",
+      "fps": 30.0,
+      "total_frames": 607,
+      "duration_sec": 20.23
+    },
+    {
+      "filename": "HandWash_017_A_12_G_04.mp4",
+      "folder": "Step_7_Right",
+      "class_id": 0,
+      "action": "Step_7_Wrists_Negative",
+      "fps": 30.0,
+      "total_frames": 408,
+      "duration_sec": 13.6
+    },
+    {
+      "filename": "HandWash_018_A_12_G_05.mp4",
+      "folder": "Step_7_Right",
+      "class_id": 0,
+      "action": "Step_7_Wrists_Negative",
+      "fps": 30.0,
+      "total_frames": 303,
+      "duration_sec": 10.1
+    },
+    {
+      "filename": "HandWash_019_A_12_G_05.mp4",
+      "folder": "Step_7_Right",
+      "class_id": 0,
+      "action": "Step_7_Wrists_Negative",
+      "fps": 30.0,
+      "total_frames": 226,
+      "duration_sec": 7.53
+    },
+    {
+      "filename": "HandWash_020_A_12_G_05.mp4",
+      "folder": "Step_7_Right",
+      "class_id": 0,
+      "action": "Step_7_Wrists_Negative",
+      "fps": 30.0,
+      "total_frames": 340,
+      "duration_sec": 11.33
+    },
+    {
+      "filename": "HandWash_021_A_12_G_05.mp4",
+      "folder": "Step_7_Right",
+      "class_id": 0,
+      "action": "Step_7_Wrists_Negative",
+      "fps": 30.0,
+      "total_frames": 258,
+      "duration_sec": 8.6
+    },
+    {
+      "filename": "HandWash_022_A_12_G_05.mp4",
+      "folder": "Step_7_Right",
+      "class_id": 0,
+      "action": "Step_7_Wrists_Negative",
+      "fps": 30.0,
+      "total_frames": 377,
+      "duration_sec": 12.57
+    },
+    {
+      "filename": "HandWash_023_A_12_G_05.mp4",
+      "folder": "Step_7_Right",
+      "class_id": 0,
+      "action": "Step_7_Wrists_Negative",
+      "fps": 30.0,
+      "total_frames": 276,
+      "duration_sec": 9.2
+    },
+    {
+      "filename": "HandWash_024_A_12_G_05.mp4",
+      "folder": "Step_7_Right",
+      "class_id": 0,
+      "action": "Step_7_Wrists_Negative",
+      "fps": 30.0,
+      "total_frames": 274,
+      "duration_sec": 9.13
+    },
+    {
+      "filename": "HandWash_025_A_12_G_05.mp4",
+      "folder": "Step_7_Right",
+      "class_id": 0,
+      "action": "Step_7_Wrists_Negative",
+      "fps": 30.0,
+      "total_frames": 313,
+      "duration_sec": 10.43
+    }
+  ]
+}

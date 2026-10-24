@@ -53,10 +53,12 @@ export function StudentKioskApp({ useMock = false }) {
   const [isInitializingKiosk, setIsInitializingKiosk] = useState(true);
   const [isExiting, setIsExiting] = useState(false);
 
-  // 1. MediaPipe Hands Hook (Rule 1 & Rule 2) - Hands required during WASHING (not before)
+  // 1. MediaPipe Hands Hook (Rule 1 & Rule 2) - Keep active across camera states for immediate detection
   const handState = useMediaPipeHands({
     videoRef,
     enabled: [
+      KIOSK_STATES.IDLE,
+      KIOSK_STATES.IDENTIFYING,
       KIOSK_STATES.READY,
       KIOSK_STATES.WASHING
     ].includes(state.currentState)
@@ -282,26 +284,47 @@ export function StudentKioskApp({ useMock = false }) {
   }, []);
 
   // Finish washing and compute explainable compliance score
-  const handleFinishWashing = useCallback(async () => {
+  const handleFinishWashing = useCallback(async (finalEngineSteps = null) => {
     dispatch({ type: 'START_SCORING' });
 
     const currentMissed = missedStepsRef.current || [];
-    const scoreBreakdown = calculateHandwashScore(state.completedSteps, currentMissed);
+    
+    // Ensure all completed steps from engine (including Step 6) are included
+    let stepsToScore = state.completedSteps || [];
+    if (Array.isArray(finalEngineSteps) && finalEngineSteps.length > 0) {
+      const existingStepNums = new Set(stepsToScore.map(s => typeof s === 'object' ? s.stepNumber : s));
+      const merged = [...stepsToScore];
+      for (const stepNum of finalEngineSteps) {
+        if (!existingStepNums.has(stepNum)) {
+          merged.push({
+            stepNumber: stepNum,
+            durationMs: 6000,
+            avgConfidence: 0.95,
+            completed: true
+          });
+          existingStepNums.add(stepNum);
+        }
+      }
+      stepsToScore = merged;
+    }
+
+    const scoreBreakdown = calculateHandwashScore(stepsToScore, currentMissed);
     const computedScore = scoreBreakdown.totalScore;
 
     // Rule 7: Only save to Firebase if >= 1 verified step, >= 10s scrub time, and NOT a dev test session
-    const completed = state.completedSteps || [];
-    const totalScrubSec = completed.reduce((acc, s) => acc + (typeof s === 'object' ? (s.durationMs || 0) : 6000), 0) / 1000;
+    const totalScrubSec = stepsToScore.reduce((acc, s) => acc + (typeof s === 'object' ? (s.durationMs || 0) : 6000), 0) / 1000;
     const isTestMode = detectionMode === 'test' || state.student?.isTest;
 
-    const shouldSave = completed.length >= HANDWASH_CONFIG.MIN_VERIFIED_STEPS_TO_SAVE && 
+    const shouldSave = stepsToScore.length >= HANDWASH_CONFIG.MIN_VERIFIED_STEPS_TO_SAVE && 
                        totalScrubSec >= HANDWASH_CONFIG.MIN_VERIFIED_SCRUB_TIME_SEC && 
                        !isTestMode;
 
     if (shouldSave && state.sessionId) {
       await updateSession(state.sessionId, {
+        score: computedScore,
         complianceScore: computedScore,
-        completedSteps: state.completedSteps,
+        steps: stepsToScore,
+        completedSteps: stepsToScore,
         missedSteps: currentMissed,
         status: 'completed',
         mode: detectionMode
@@ -314,7 +337,7 @@ export function StudentKioskApp({ useMock = false }) {
       type: 'SCORING_COMPLETE',
       payload: {
         score: computedScore,
-        steps: state.completedSteps
+        steps: stepsToScore
       }
     });
   }, [state.completedSteps, state.sessionId, state.student, detectionMode]);

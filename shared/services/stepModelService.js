@@ -86,6 +86,11 @@ export const WHO_STEPS_INFO = [
 export class StepRecognitionEngine {
   constructor(options = {}) {
     this.mode = options.mode ?? HANDWASH_CONFIG.DETECTION_MODE ?? 'strict';
+    this.enableGeometryFallback = options.enableGeometryFallback ?? (
+      this.mode === 'dry' ||
+      this.mode === 'adaptive' ||
+      this.mode === 'ensemble'
+    );
     const isDry = this.mode === 'dry';
 
     const defaultConfidence = isDry
@@ -142,8 +147,27 @@ export class StepRecognitionEngine {
    */
   getYoloClassStep(yoloClass) {
     if (!yoloClass) return -1;
-    const mapped = YOLO_TO_WHO_STEP_MAP[yoloClass];
-    return mapped !== undefined ? mapped : -1;
+    // 1. Direct table match
+    if (YOLO_TO_WHO_STEP_MAP[yoloClass] !== undefined) {
+      return YOLO_TO_WHO_STEP_MAP[yoloClass];
+    }
+    // 2. Normalized lookup (case-insensitive & separator-tolerant e.g. "step_1", "Step 1", "STEP-1")
+    const cleaned = String(yoloClass).trim().toLowerCase().replace(/[\s-]/g, '_');
+    for (const [key, step] of Object.entries(YOLO_TO_WHO_STEP_MAP)) {
+      if (key.toLowerCase().replace(/[\s-]/g, '_') === cleaned) {
+        return step;
+      }
+    }
+    // 3. Explicit rejection of Step_7 or background
+    if (cleaned.includes('step_7') || cleaned.includes('background') || cleaned.includes('idle')) {
+      return -1;
+    }
+    // 4. Fallback pattern match strictly for valid WHO steps 1-6
+    const match = cleaned.match(/step_?([1-6])(?:\b|_)/);
+    if (match) {
+      return parseInt(match[1], 10);
+    }
+    return -1;
   }
 
   mapStepToYoloClass(stepId) {
@@ -249,7 +273,7 @@ export class StepRecognitionEngine {
       ? isHandsMoving 
       : (handMovement >= this.movementThreshold);
 
-    // RULE 3 & 4: Step validation (Classifier vs Landmark Geometry Fallback)
+    // RULE 3 & 4: Step validation (Classifier vs Angle-Invariant Landmark Geometry Fusion)
     const stepMatch = mappedStep === this.currentStep;
     const confidenceCheck = confidence >= this.confidenceThreshold;
     const classifierPassed = stepMatch && confidenceCheck;
@@ -257,7 +281,7 @@ export class StepRecognitionEngine {
     let geometryPassed = false;
     let geometryName = null;
 
-    if (this.mode === 'dry') {
+    if (this.enableGeometryFallback && handsData && handsData.length > 0) {
       const geomResult = evaluateDryModeGeometry(
         this.currentStep,
         handsData,
@@ -271,10 +295,9 @@ export class StepRecognitionEngine {
     this.geometryRulePassed = geometryPassed;
     this.geometryRuleName = geometryPassed ? geometryName : null;
 
-    // In Dry Mode: frame qualifies if classifier matches OR landmark-geometry fallback matches
-    const stepSatisfied = this.mode === 'dry'
-      ? (classifierPassed || geometryPassed)
-      : classifierPassed;
+    // Adaptive Ensemble Fusion:
+    // Frame qualifies if classifier matches target step OR angle-invariant 3D landmark geometry validates pose!
+    const stepSatisfied = classifierPassed || geometryPassed;
 
     // Update rolling prediction history for telemetry
     this.predictionHistory.push(rawClass);
@@ -294,7 +317,7 @@ export class StepRecognitionEngine {
         ? 'No hands (HANDS_MISSING: >500ms absent)' 
         : `No hands (INSUFFICIENT_HANDS: detected ${handCount}/${requiredHands})`;
     } else if (!stepSatisfied) {
-      if (confidence < this.confidenceThreshold && (stepMatch || this.mode === 'dry')) {
+      if (confidence < this.confidenceThreshold && (stepMatch || this.mode === 'dry' || geometryPassed)) {
         singleReason = 'Low confidence';
         detailedReason = `Low confidence (LOW_CONFIDENCE: ${confidence.toFixed(2)} < ${this.confidenceThreshold.toFixed(2)})`;
       } else {
@@ -323,7 +346,7 @@ export class StepRecognitionEngine {
           this.lastFrameTime = now;
           this.statusReason = singleReason;
           this.failingReason = geometryPassed && !classifierPassed
-            ? `ALL_CONDITIONS_MET (GEOMETRY_FALLBACK: ${geometryName})`
+            ? `ALL_CONDITIONS_MET (ADAPTIVE_GEOMETRY_FUSION: ${geometryName})`
             : detailedReason;
         } else {
           this.graceState = 'DEBOUNCING';
@@ -336,7 +359,7 @@ export class StepRecognitionEngine {
         this.graceState = 'ACTIVE';
         this.statusReason = singleReason;
         this.failingReason = geometryPassed && !classifierPassed
-          ? `ALL_CONDITIONS_MET (GEOMETRY_FALLBACK: ${geometryName})`
+          ? `ALL_CONDITIONS_MET (ADAPTIVE_GEOMETRY_FUSION: ${geometryName})`
           : detailedReason;
 
         if (this.lastFrameTime) {
@@ -383,10 +406,15 @@ export class StepRecognitionEngine {
       } else {
         // Was already inactive: remain paused
         this.graceState = 'PAUSED';
-        this.debounceStreak = 0;
+        this.debounceStreak = Math.max(0, this.debounceStreak - 1);
         this.lastFrameTime = null;
-        this.statusReason = singleReason;
-        this.failingReason = detailedReason;
+        if (this.debounceStreak > 0) {
+          this.statusReason = `Debouncing (${this.debounceStreak}/${this.debounceFramesRequired})`;
+          this.failingReason = `DEBOUNCING (${this.debounceStreak}/${this.debounceFramesRequired})`;
+        } else {
+          this.statusReason = singleReason;
+          this.failingReason = detailedReason;
+        }
       }
     }
 

@@ -20,16 +20,17 @@ export function useMediaPipeHands({
   const [handConfidence, setHandConfidence] = useState(0);
   const [handMovement, setHandMovement] = useState(0);
   const [isHandsMoving, setIsHandsMoving] = useState(false);
-  const [handsMissing, setHandsMissing] = useState(true);
+  const [handsMissing, setHandsMissing] = useState(false);
   const [isModelReady, setIsModelReady] = useState(false);
   const [handsData, setHandsData] = useState([]);
 
   const handsInstanceRef = useRef(null);
   const movementTrackerRef = useRef(new HandMovementTracker());
   const lastValidHandsRef = useRef([]);
-  const lastHandsSeenTimeRef = useRef(0);
+  const lastHandsSeenTimeRef = useRef(performance.now());
   const timerRef = useRef(null);
   const isProcessingFrameRef = useRef(false);
+  const lastFrameSentTimeRef = useRef(0);
 
   const effectiveThreshold = mode === 'dry'
     ? HANDWASH_CONFIG.DRY_MOVEMENT_PATH_THRESHOLD
@@ -57,54 +58,59 @@ export function useMediaPipeHands({
 
         hands.onResults((results) => {
           if (!isMounted) return;
-          const now = performance.now();
+          try {
+            const now = performance.now();
 
-          const rawLandmarksList = results.multiHandLandmarks || [];
-          const handednessList = results.multiHandedness || [];
+            const rawLandmarksList = results.multiHandLandmarks || [];
+            const handednessList = results.multiHandedness || [];
 
-          // Filter qualifying hands with confidence >= 0.30
-          let qualifyingHands = [];
-          for (let i = 0; i < rawLandmarksList.length; i++) {
-            const conf = handednessList[i]?.score ?? 1.0;
-            if (conf >= (HANDWASH_CONFIG.HAND_LANDMARK_MIN_CONFIDENCE || 0.30)) {
-              qualifyingHands.push({
-                landmarks: rawLandmarksList[i],
-                confidence: conf
-              });
-            }
-          }
-
-          // Prompt Fix 3: If hands vanish for < 500 ms, keep the last state (hold last value)
-          if (qualifyingHands.length > 0) {
-            lastHandsSeenTimeRef.current = now;
-            lastValidHandsRef.current = qualifyingHands;
-            setHandsMissing(false);
-          } else {
-            const vanishElapsed = now - lastHandsSeenTimeRef.current;
-            if (vanishElapsed < (HANDWASH_CONFIG.HAND_STATE_HOLD_MS || 500) && lastValidHandsRef.current.length > 0) {
-              // Retain held hands during brief dropouts
-              qualifyingHands = lastValidHandsRef.current;
-            } else {
-              lastValidHandsRef.current = [];
-              if (vanishElapsed > (HANDWASH_CONFIG.HANDS_MISSING_PAUSE_MS || 500)) {
-                setHandsMissing(true);
+            // Filter qualifying hands with confidence >= 0.30
+            let qualifyingHands = [];
+            for (let i = 0; i < rawLandmarksList.length; i++) {
+              const conf = handednessList[i]?.score ?? 1.0;
+              if (conf >= (HANDWASH_CONFIG.HAND_LANDMARK_MIN_CONFIDENCE || 0.30)) {
+                qualifyingHands.push({
+                  landmarks: rawLandmarksList[i],
+                  confidence: conf
+                });
               }
             }
+
+            // Prompt Fix 3: If hands vanish for < 500 ms, keep the last state (hold last value)
+            if (qualifyingHands.length > 0) {
+              lastHandsSeenTimeRef.current = now;
+              lastValidHandsRef.current = qualifyingHands;
+              setHandsMissing(false);
+            } else {
+              const vanishElapsed = now - lastHandsSeenTimeRef.current;
+              if (vanishElapsed < (HANDWASH_CONFIG.HAND_STATE_HOLD_MS || 500) && lastValidHandsRef.current.length > 0) {
+                // Retain held hands during brief dropouts
+                qualifyingHands = lastValidHandsRef.current;
+              } else {
+                lastValidHandsRef.current = [];
+                if (vanishElapsed > (HANDWASH_CONFIG.HANDS_MISSING_PAUSE_MS || 500)) {
+                  setHandsMissing(true);
+                }
+              }
+            }
+
+            // Prompt Fix 2: Sliding 500ms window path-length movement metric with EMA 0.5
+            const motionResult = movementTrackerRef.current.update(
+              qualifyingHands,
+              now,
+              effectiveThreshold
+            );
+
+            setHandCount(motionResult.handCount);
+            setHandConfidence(motionResult.handConfidence);
+            setHandMovement(motionResult.movement);
+            setIsHandsMoving(motionResult.isMoving);
+            setHandsData(motionResult.handsData || []);
+          } catch (err) {
+            console.warn('[useMediaPipeHands] Error in onResults:', err);
+          } finally {
+            isProcessingFrameRef.current = false;
           }
-
-          // Prompt Fix 2: Sliding 500ms window path-length movement metric with EMA 0.5
-          const motionResult = movementTrackerRef.current.update(
-            qualifyingHands,
-            now,
-            effectiveThreshold
-          );
-
-          setHandCount(motionResult.handCount);
-          setHandConfidence(motionResult.handConfidence);
-          setHandMovement(motionResult.movement);
-          setIsHandsMoving(motionResult.isMoving);
-          setHandsData(motionResult.handsData || []);
-          isProcessingFrameRef.current = false;
         });
 
         await hands.initialize();
@@ -141,17 +147,28 @@ export function useMediaPipeHands({
 
     const processFrame = async () => {
       const video = videoRef?.current;
-      const isVideoReady = video && !video.paused && !video.ended && video.readyState >= 2;
-      if (!isVideoReady || isProcessingFrameRef.current || !handsInstanceRef.current) {
+      const isVideoReady = video && !video.paused && !video.ended && video.readyState >= 2 && video.videoWidth > 0 && video.videoHeight > 0;
+      if (!isVideoReady || !handsInstanceRef.current) {
         return;
+      }
+
+      const now = performance.now();
+      if (isProcessingFrameRef.current) {
+        if (now - (lastFrameSentTimeRef.current || 0) > 400) {
+          isProcessingFrameRef.current = false;
+        } else {
+          return;
+        }
       }
 
       try {
         isProcessingFrameRef.current = true;
+        lastFrameSentTimeRef.current = now;
         await handsInstanceRef.current.send({ image: video });
       } catch (err) {
-        isProcessingFrameRef.current = false;
         console.warn('[useMediaPipeHands] Frame inference error:', err.message);
+      } finally {
+        isProcessingFrameRef.current = false;
       }
     };
 

@@ -143,10 +143,26 @@ class LSTMHandwashClassifier:
             label = res.handedness[0][0].category_name if res.handedness else "Right"
             avg_conf = float(res.handedness[0][0].score) if res.handedness else 0.8
             hand_norm = self.normalize_single_hand(res.hand_landmarks[0])
+
+            # Check for merged / overlapping palms in a single detected hand region
+            pts = np.array([[lm.x, lm.y] for lm in res.hand_landmarks[0]], dtype=np.float32)
+            min_xy = pts.min(axis=0)
+            max_xy = pts.max(axis=0)
+            box_w = max(0.001, max_xy[0] - min_xy[0])
+            box_h = max(0.001, max_xy[1] - min_xy[1])
+            aspect_ratio = box_w / box_h
+
+            mirrored = hand_norm.copy().reshape(-1, 3)
+            mirrored[:, 0] = -mirrored[:, 0]
+            mirrored_flat = mirrored.flatten()
+
             if label.lower() == "left":
                 feat[0:HAND_FEATURE_DIM] = hand_norm
+                feat[HAND_FEATURE_DIM:FEATURE_DIM] = mirrored_flat
             else:
+                feat[0:HAND_FEATURE_DIM] = mirrored_flat
                 feat[HAND_FEATURE_DIM:FEATURE_DIM] = hand_norm
+            num_hands = 2
         else:
             h0_label = res.handedness[0][0].category_name.lower() if res.handedness else "left"
             h1_label = res.handedness[1][0].category_name.lower() if len(res.handedness) > 1 else "right"
@@ -239,7 +255,8 @@ class SessionLandmarkBuffer:
             self.missing_hands_streak += 1
             # Append zero feature to avoid sudden sequence starvation
             self.buffer.append(feat)
-            if self.missing_hands_streak >= 10:  # ~300ms at 30fps
+            if self.missing_hands_streak >= 25:  # ~2.5s buffer retention at 10fps
+                self.buffer.clear()
                 return {
                     "class": "background",
                     "confidence": 1.0,

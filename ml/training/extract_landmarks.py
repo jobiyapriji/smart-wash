@@ -176,6 +176,11 @@ def extract_landmarks_from_video(video_path, landmarker, max_frames=None):
         if not ret:
             break
             
+        h, w = frame.shape[:2]
+        if max(h, w) > 1280:
+            scale = 1280.0 / max(h, w)
+            frame = cv2.resize(frame, (int(w * scale), int(h * scale)), interpolation=cv2.INTER_AREA)
+
         rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         mp_img = mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb)
         res = landmarker.detect(mp_img)

@@ -76,6 +76,44 @@ function dist2D(p1, p2) {
 }
 
 /**
+ * Computes 3D surface normal vector for a palm using landmarks:
+ * - Landmark 0: Wrist
+ * - Landmark 5: Index MCP
+ * - Landmark 17: Pinky MCP
+ * Invariant to 3D rotation, roll, pitch, and yaw.
+ */
+export function computePalmNormal(landmarks) {
+  if (!landmarks || landmarks.length < 21) return { x: 0, y: 0, z: 1 };
+  const p0 = landmarks[0];
+  const p5 = landmarks[5];
+  const p17 = landmarks[17];
+
+  const z0 = p0.z || 0;
+  const z5 = p5.z || 0;
+  const z17 = p17.z || 0;
+
+  const v1 = { x: p5.x - p0.x, y: p5.y - p0.y, z: z5 - z0 };
+  const v2 = { x: p17.x - p0.x, y: p17.y - p0.y, z: z17 - z0 };
+
+  // Cross product: v1 x v2
+  const nx = v1.y * v2.z - v1.z * v2.y;
+  const ny = v1.z * v2.x - v1.x * v2.z;
+  const nz = v1.x * v2.y - v1.y * v2.x;
+
+  const len = Math.sqrt(nx * nx + ny * ny + nz * nz);
+  if (len < 1e-5) return { x: 0, y: 0, z: 1 };
+  return { x: nx / len, y: ny / len, z: nz / len };
+}
+
+/**
+ * 3D dot product between two vector objects.
+ */
+export function dotProduct3D(v1, v2) {
+  if (!v1 || !v2) return 0;
+  return (v1.x * v2.x) + (v1.y * v2.y) + ((v1.z || 0) * (v2.z || 0));
+}
+
+/**
  * Computes finger direction vector from wrist (0) to middle MCP (9).
  */
 function getHandDirectionVector(landmarks) {
@@ -102,20 +140,18 @@ function getAvgFingertipToPalmDist(landmarks, palmCenter) {
 }
 
 // -------------------------------------------------------------
-// The 6 Landmark Geometry Rules (MediaPipe Normalized)
+// The 6 Landmark Geometry Rules (MediaPipe Normalized & Angle-Invariant)
 // -------------------------------------------------------------
 
 /**
- * STEP 1: Palm to Palm (Approximate Geometry Rule)
+ * STEP 1: Palm to Palm (Angle-Invariant 3D Geometry Rule)
  * 
  * Condition:
- * - Both hands present
- * - Palm centres closer than ~0.6 hand-widths
- * - Fingers pointing the same way (dot product of direction vectors > 0.5)
- * 
- * Tunable Thresholds:
- * - STEP_1_PALM_DISTANCE: default 0.60
- * - STEP_1_FINGER_DIR_DOT: default 0.50
+ * - Both hands present (or single merged-hand detection from overlapping palms)
+ * - Palm centres closer than ~0.75 hand-widths
+ * - Angle-invariant opposition: 3D palm surface normals face opposite directions (dot <= -0.20)
+ *   OR finger direction vectors align (dot >= 0.40)
+ *   OR bounding boxes overlap >= 35%
  */
 export function checkStep1PalmToPalm(handsData = [], thresholds = HANDWASH_CONFIG.GEOMETRY_THRESHOLDS) {
   if (!handsData || handsData.length === 0) return false;
@@ -124,16 +160,23 @@ export function checkStep1PalmToPalm(handsData = [], thresholds = HANDWASH_CONFI
   if (handsData.length === 1) {
     const h = handsData[0];
     if (!h.landmarks) return false;
-    return isMergedHand(h.landmarks, h.scale);
+    if (isMergedHand(h.landmarks, h.scale)) return true;
+
+    // In natural rubbing, palms held vertically create a merged silhouette:
+    // Check bounding box area and width relative to hand scale
+    const box = getHandBoundingBox(h.landmarks);
+    const handScale = h.scale || computeHandScale(h.landmarks);
+    const scaleRatio = box.width / Math.max(0.001, handScale);
+    if (scaleRatio >= 0.70 && box.area >= 0.012) {
+      return true;
+    }
+    return false;
   }
 
   // Case B: 2 detected hands
   const hA = handsData[0];
   const hB = handsData[1];
   if (!hA.landmarks || !hB.landmarks) return false;
-
-  // If either detected hand is already marked as merged
-  if (hA.isMerged || hB.isMerged) return true;
 
   const palmA = hA.palmCenter || computePalmCenter(hA.landmarks);
   const palmB = hB.palmCenter || computePalmCenter(hB.landmarks);
@@ -145,15 +188,40 @@ export function checkStep1PalmToPalm(handsData = [], thresholds = HANDWASH_CONFI
 
   const palmDist = dist2D(palmA, palmB);
   const normalizedPalmDist = palmDist / avgHandWidth;
-  const maxPalmDist = thresholds?.STEP_1_PALM_DISTANCE ?? 0.60;
-  if (normalizedPalmDist > maxPalmDist) return false;
+  const maxPalmDist = thresholds?.STEP_1_PALM_DISTANCE ?? 0.85;
+  const boxA = getHandBoundingBox(hA.landmarks);
+  const boxB = getHandBoundingBox(hB.landmarks);
+  const boxOverlap = computeBoxOverlap(boxA, boxB);
 
   const dirA = getHandDirectionVector(hA.landmarks);
   const dirB = getHandDirectionVector(hB.landmarks);
-  const dot = (dirA.x * dirB.x) + (dirA.y * dirB.y);
-  const minDot = thresholds?.STEP_1_FINGER_DIR_DOT ?? 0.50;
+  const dirDot = (dirA.x * dirB.x) + (dirA.y * dirB.y);
 
-  return dot >= minDot;
+  // Close overlap during active scrubbing: hands overlap and fingers generally point in similar direction
+  if (boxOverlap >= 0.20 && normalizedPalmDist <= (maxPalmDist * 1.6)) {
+    if (dirDot >= 0.10) return true;
+  }
+
+  // Fingers pointing opposite ways (e.g. one pointing up, one down) is not palm to palm
+  if (dirDot < 0.10) return false;
+
+  // 1. 3D Palmar Surface Normal opposition (invariant to camera orientation)
+  const normA = computePalmNormal(hA.landmarks);
+  const normB = computePalmNormal(hB.landmarks);
+  const normalDot = dotProduct3D(normA, normB);
+  const minOpposition = thresholds?.STEP_1_NORMAL_OPPOSITION ?? -0.15;
+  if (normalDot <= minOpposition && normalizedPalmDist <= (maxPalmDist * 1.5)) {
+    return true;
+  }
+
+  // 2. 2D Finger Direction alignment
+  const minDot = thresholds?.STEP_1_FINGER_DIR_DOT ?? 0.35;
+  if (dirDot >= minDot && normalizedPalmDist <= (maxPalmDist * 1.5)) {
+    return true;
+  }
+
+  // 3. Fallback: Bounding box overlap >= 20% within rubbing distance
+  return boxOverlap >= (thresholds?.STEP_1_BOX_OVERLAP ?? 0.20) && normalizedPalmDist <= (maxPalmDist * 1.5);
 }
 
 /**
@@ -161,11 +229,8 @@ export function checkStep1PalmToPalm(handsData = [], thresholds = HANDWASH_CONFI
  * 
  * Condition:
  * - Both hands present
- * - Bounding boxes overlap > 50%
- * - One hand's palm centre inside the other's bounding box
- * 
- * Tunable Thresholds:
- * - STEP_2_BOX_OVERLAP: default 0.50
+ * - Bounding boxes overlap > 40%
+ * - One hand's palm centre inside or touching the other's bounding box
  */
 export function checkStep2PalmOverDorsum(handsData = [], thresholds = HANDWASH_CONFIG.GEOMETRY_THRESHOLDS) {
   if (!handsData || handsData.length < 2) return false;
@@ -176,15 +241,15 @@ export function checkStep2PalmOverDorsum(handsData = [], thresholds = HANDWASH_C
   const boxA = getHandBoundingBox(hA.landmarks);
   const boxB = getHandBoundingBox(hB.landmarks);
   const overlap = computeBoxOverlap(boxA, boxB);
-  const minOverlap = thresholds?.STEP_2_BOX_OVERLAP ?? 0.50;
+  const minOverlap = thresholds?.STEP_2_BOX_OVERLAP ?? 0.40;
   if (overlap < minOverlap) return false;
 
   const palmA = hA.palmCenter || computePalmCenter(hA.landmarks);
   const palmB = hB.palmCenter || computePalmCenter(hB.landmarks);
   if (!palmA || !palmB) return false;
 
-  const palmAInBoxB = isPointInBox(palmA, boxB);
-  const palmBInBoxA = isPointInBox(palmB, boxA);
+  const palmAInBoxB = isPointInBox(palmA, boxB, 0.08);
+  const palmBInBoxA = isPointInBox(palmB, boxA, 0.08);
 
   return palmAInBoxB || palmBInBoxA;
 }
@@ -194,12 +259,8 @@ export function checkStep2PalmOverDorsum(handsData = [], thresholds = HANDWASH_C
  * 
  * Condition:
  * - Both hands present
- * - Bounding boxes overlap > 60%
- * - Fingertip x-positions of the two hands alternate across horizontal axis
- * 
- * Tunable Thresholds:
- * - STEP_3_BOX_OVERLAP: default 0.60
- * - STEP_3_MIN_ALTERNATIONS: default 2
+ * - Bounding boxes overlap > 45%
+ * - Fingertip positions of the two hands alternate across horizontal or vertical axis
  */
 export function checkStep3FingersInterlaced(handsData = [], thresholds = HANDWASH_CONFIG.GEOMETRY_THRESHOLDS) {
   if (!handsData || handsData.length < 2) return false;
@@ -210,30 +271,34 @@ export function checkStep3FingersInterlaced(handsData = [], thresholds = HANDWAS
   const boxA = getHandBoundingBox(hA.landmarks);
   const boxB = getHandBoundingBox(hB.landmarks);
   const overlap = computeBoxOverlap(boxA, boxB);
-  const minOverlap = thresholds?.STEP_3_BOX_OVERLAP ?? 0.60;
+  const minOverlap = thresholds?.STEP_3_BOX_OVERLAP ?? 0.45;
   if (overlap < minOverlap) return false;
 
   // Collect fingertips of both hands (index, middle, ring, pinky)
   const tipIndices = [8, 12, 16, 20];
   const tips = [];
   for (const idx of tipIndices) {
-    tips.push({ x: hA.landmarks[idx].x, owner: 'A' });
-    tips.push({ x: hB.landmarks[idx].x, owner: 'B' });
+    if (hA.landmarks[idx]) tips.push({ x: hA.landmarks[idx].x, y: hA.landmarks[idx].y, owner: 'A' });
+    if (hB.landmarks[idx]) tips.push({ x: hB.landmarks[idx].x, y: hB.landmarks[idx].y, owner: 'B' });
   }
 
-  // Sort fingertips by horizontal x coordinate
-  tips.sort((a, b) => a.x - b.x);
-
-  // Count owner alternations (A -> B or B -> A)
-  let alternations = 0;
-  for (let i = 1; i < tips.length; i++) {
-    if (tips[i].owner !== tips[i - 1].owner) {
-      alternations++;
-    }
+  // Count alternations along horizontal axis
+  const tipsX = [...tips].sort((a, b) => a.x - b.x);
+  let alternationsX = 0;
+  for (let i = 1; i < tipsX.length; i++) {
+    if (tipsX[i].owner !== tipsX[i - 1].owner) alternationsX++;
   }
 
+  // Count alternations along vertical axis (for tilted hands / varying angles)
+  const tipsY = [...tips].sort((a, b) => a.y - b.y);
+  let alternationsY = 0;
+  for (let i = 1; i < tipsY.length; i++) {
+    if (tipsY[i].owner !== tipsY[i - 1].owner) alternationsY++;
+  }
+
+  const maxAlternations = Math.max(alternationsX, alternationsY);
   const minAlternations = thresholds?.STEP_3_MIN_ALTERNATIONS ?? 2;
-  return alternations >= minAlternations;
+  return maxAlternations >= minAlternations;
 }
 
 /**
@@ -263,14 +328,32 @@ export function checkStep4BacksOfFingers(handsData = [], thresholds = HANDWASH_C
   const maxCurlRatio = thresholds?.STEP_4_CURL_RATIO ?? 0.85;
   const maxRestingDist = thresholds?.STEP_4_RESTING_DIST ?? 0.80;
 
-  // Check if Hand A is curled and resting on Palm B
-  const tipDistA = getAvgFingertipToPalmDist(hA.landmarks, palmA);
-  const isACurled = (tipDistA / Math.max(0.01, scaleA)) <= maxCurlRatio;
-  const aRestingOnB = isACurled && (dist2D(palmA, palmB) <= scaleB * maxRestingDist);
+  // Helper: Verifies true finger curling (tips curled inward toward wrist/palm)
+  const isHandCurled = (landmarks, palm, scale) => {
+    const wrist = landmarks[0];
+    let curledCount = 0;
+    // Pairs: [tip, pip] for Index (8,6), Middle (12,10), Ring (16,14), Pinky (20,18)
+    const pairs = [[8, 6], [12, 10], [16, 14], [20, 18]];
+    for (const [tipIdx, pipIdx] of pairs) {
+      if (landmarks[tipIdx] && landmarks[pipIdx]) {
+        const tipToWrist = dist2D(landmarks[tipIdx], wrist);
+        const pipToWrist = dist2D(landmarks[pipIdx], wrist);
+        if (tipToWrist <= pipToWrist * 1.15) {
+          curledCount++;
+        }
+      }
+    }
+    // Also check average fingertip distance to palm
+    const tipDist = getAvgFingertipToPalmDist(landmarks, palm);
+    const avgCurlPassed = (tipDist / Math.max(0.01, scale)) <= maxCurlRatio;
 
-  // Check symmetrically if Hand B is curled and resting on Palm A
-  const tipDistB = getAvgFingertipToPalmDist(hB.landmarks, palmB);
-  const isBCurled = (tipDistB / Math.max(0.01, scaleB)) <= maxCurlRatio;
+    return curledCount >= 2 || avgCurlPassed;
+  };
+
+  const isACurled = isHandCurled(hA.landmarks, palmA, scaleA);
+  const isBCurled = isHandCurled(hB.landmarks, palmB, scaleB);
+
+  const aRestingOnB = isACurled && (dist2D(palmA, palmB) <= scaleB * maxRestingDist);
   const bRestingOnA = isBCurled && (dist2D(palmB, palmA) <= scaleA * maxRestingDist);
 
   return aRestingOnB || bRestingOnA;

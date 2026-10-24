@@ -1,0 +1,193 @@
+{
+  "dataset_version": "1.0",
+  "dataset_name": "SMART WASH WHO Handwashing Action Dataset",
+  "classes": {
+    "0": "background",
+    "1": "Step_1",
+    "2": "Step_2",
+    "3": "Step_3",
+    "4": "Step_4",
+    "5": "Step_5",
+    "6": "Step_6"
+  },
+  "class_descriptions": {
+    "0": "Background, hands away, or stationary hands",
+    "1": "Step 1: Palm to palm rubbing",
+    "2": "Step 2: Right palm over left dorsum and vice versa",
+    "3": "Step 3: Palm to palm with fingers interlaced",
+    "4": "Step 4: Backs of fingers to opposing palms with fingers interlocked",
+    "5": "Step 5: Rotational rubbing of left thumb clasped in right palm and vice versa",
+    "6": "Step 6: Rotational rubbing, backwards and forwards with clasped fingers of right hand in left palm and vice versa"
+  },
+  "default_video_dir": "../../../Handwashing",
+  "videos": [
+    {
+      "filename": "1.mp4",
+      "participant_id": "P1",
+      "fps": 30.0,
+      "total_frames": 301,
+      "segments": [
+        {
+          "action": "Step_1",
+          "class_id": 1,
+          "start_sec": 0.5,
+          "end_sec": 9.5
+        }
+      ]
+    },
+    {
+      "filename": "2.mp4",
+      "participant_id": "P1",
+      "fps": 30.0,
+      "total_frames": 313,
+      "segments": [
+        {
+          "action": "Step_2",
+          "class_id": 2,
+          "start_sec": 0.5,
+          "end_sec": 9.8
+        }
+      ]
+    },
+    {
+      "filename": "3.mp4",
+      "participant_id": "P1",
+      "fps": 30.0,
+      "total_frames": 314,
+      "segments": [
+        {
+          "action": "Step_3",
+          "class_id": 3,
+          "start_sec": 0.5,
+          "end_sec": 9.8
+        }
+      ]
+    },
+    {
+      "filename": "4.mp4",
+      "participant_id": "P1",
+      "fps": 30.0,
+      "total_frames": 301,
+      "segments": [
+        {
+          "action": "Step_4",
+          "class_id": 4,
+          "start_sec": 0.5,
+          "end_sec": 9.5
+        }
+      ]
+    },
+    {
+      "filename": "5.mp4",
+      "participant_id": "P1",
+      "fps": 30.0,
+      "total_frames": 301,
+      "segments": [
+        {
+          "action": "Step_5",
+          "class_id": 5,
+          "start_sec": 0.5,
+          "end_sec": 9.5
+        }
+      ]
+    },
+    {
+      "filename": "6.mp4",
+      "participant_id": "P1",
+      "fps": 30.0,
+      "total_frames": 323,
+      "segments": [
+        {
+          "action": "Step_6",
+          "class_id": 6,
+          "start_sec": 0.5,
+          "end_sec": 10.0
+        }
+      ]
+    },
+    {
+      "filename": "video_20261022_111853.mp4",
+      "participant_id": "P2",
+      "fps": 60.0,
+      "total_frames": 902,
+      "segments": [
+        {
+          "action": "Step_1",
+          "class_id": 1,
+          "start_sec": 0.5,
+          "end_sec": 14.5
+        }
+      ]
+    },
+    {
+      "filename": "video_20261022_111954.mp4",
+      "participant_id": "P2",
+      "fps": 60.0,
+      "total_frames": 811,
+      "segments": [
+        {
+          "action": "Step_2",
+          "class_id": 2,
+          "start_sec": 0.5,
+          "end_sec": 13.0
+        }
+      ]
+    },
+    {
+      "filename": "video_20261022_112118.mp4",
+      "participant_id": "P2",
+      "fps": 60.0,
+      "total_frames": 1146,
+      "segments": [
+        {
+          "action": "Step_3",
+          "class_id": 3,
+          "start_sec": 0.5,
+          "end_sec": 18.5
+        }
+      ]
+    },
+    {
+      "filename": "video_20261022_113905.mp4",
+      "participant_id": "P2",
+      "fps": 60.0,
+      "total_frames": 729,
+      "segments": [
+        {
+          "action": "Step_4",
+          "class_id": 4,
+          "start_sec": 0.5,
+          "end_sec": 11.5
+        }
+      ]
+    },
+    {
+      "filename": "video_20261022_113953.mp4",
+      "participant_id": "P2",
+      "fps": 60.0,
+      "total_frames": 654,
+      "segments": [
+        {
+          "action": "Step_5",
+          "class_id": 5,
+          "start_sec": 0.5,
+          "end_sec": 10.4
+        }
+      ]
+    },
+    {
+      "filename": "video_20261022_114037.mp4",
+      "participant_id": "P2",
+      "fps": 60.0,
+      "total_frames": 702,
+      "segments": [
+        {
+          "action": "Step_6",
+          "class_id": 6,
+          "start_sec": 0.5,
+          "end_sec": 11.2
+        }
+      ]
+    }
+  ]
+}

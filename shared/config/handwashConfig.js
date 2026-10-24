@@ -35,21 +35,23 @@ export const HANDWASH_CONFIG = {
   MOVEMENT_THRESHOLD: 0.05,           // Baseline movement threshold (normalized path / scale)
 
   // 4. Overlapping & Merged Hands for Step 1
-  MERGED_HAND_ASPECT_RATIO_MIN: 1.15, // Aspect ratio (width/height) indicating palms pressed together
-  MERGED_HAND_SCALE_RATIO_MIN: 1.25,  // Box width / handScale ratio indicating merged hands
+  MERGED_HAND_ASPECT_RATIO_MIN: 0.90, // Aspect ratio (width/height) indicating palms pressed together
+  MERGED_HAND_SCALE_RATIO_MIN: 1.05,  // Box width / handScale ratio indicating merged hands
 
-  // 5. Tunable Landmark-Geometry Fallback Thresholds (Dry Mode - Approximate Rules)
+  // 5. Tunable Landmark-Geometry Fallback Thresholds (Approximate Rules & Angle-Invariant Metrics)
   GEOMETRY_THRESHOLDS: {
-    STEP_1_PALM_DISTANCE: 0.60,       // Max distance between palm centers normalized by hand-width (~0.60)
-    STEP_1_FINGER_DIR_DOT: 0.50,      // Min dot product of palm-to-finger direction vectors (> 0.50)
-    STEP_2_BOX_OVERLAP: 0.50,         // Min bounding box overlap ratio (> 50%)
-    STEP_3_BOX_OVERLAP: 0.60,         // Min bounding box overlap ratio (> 60%)
+    STEP_1_PALM_DISTANCE: 0.85,       // Max distance between palm centers normalized by hand-width (~0.85)
+    STEP_1_FINGER_DIR_DOT: 0.35,      // Min dot product of palm-to-finger direction vectors (> 0.35)
+    STEP_1_NORMAL_OPPOSITION: -0.15,  // Max 3D palm normal dot product (<= -0.15 indicates opposing palmar faces)
+    STEP_1_BOX_OVERLAP: 0.20,         // Min bounding box overlap ratio (> 20%)
+    STEP_2_BOX_OVERLAP: 0.40,         // Min bounding box overlap ratio (> 40%)
+    STEP_3_BOX_OVERLAP: 0.45,         // Min bounding box overlap ratio (> 45%)
     STEP_3_MIN_ALTERNATIONS: 2,       // Min alternating x-order fingertip switches between left & right hand
     STEP_4_CURL_RATIO: 0.85,          // Max curled fingertip-to-palm distance ratio relative to hand scale
-    STEP_4_RESTING_DIST: 0.80,        // Max distance between curled fingers and opposing palm
+    STEP_4_RESTING_DIST: 0.85,        // Max distance between curled fingers and opposing palm
     STEP_5_THUMB_PALM_DIST: 0.80,     // Max distance from thumb tip to opposing palm/fist area
     STEP_5_ROTATION_MOVEMENT: 0.03,   // Movement threshold required during thumb twisting
-    STEP_6_FINGERTIP_DIST: 0.60,      // Max distance from fingertips of one hand to opposing palm center
+    STEP_6_FINGERTIP_DIST: 0.65,      // Max distance from fingertips of one hand to opposing palm center
     STEP_6_CIRCULAR_MOVEMENT: 0.03    // Circular movement threshold required during fingertip rubbing
   },
 
@@ -80,7 +82,8 @@ export const HANDWASH_CONFIG = {
   },
   BONUS_MIN_SCORE: 70,                // Score must be >= 70 to get hygiene bonus
   BONUS_MIN_STEPS: 4,                 // Must complete >= 4 verified steps to get hygiene bonus
-  BONUS_POINTS: 50
+  BONUS_POINTS: 50,
+  ENABLE_ADAPTIVE_FUSION: true        // Enables Adaptive Ensemble Fusion in kiosk live recognition
 };
 
 /**

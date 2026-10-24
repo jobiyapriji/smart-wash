@@ -362,10 +362,10 @@ export function WashingView({
             <div
               key={step.id}
               onClick={() => {
-                if (onJumpToStep) onJumpToStep(step.id);
+                if (isDebug && onJumpToStep) onJumpToStep(step.id);
               }}
               style={{
-                cursor: 'pointer',
+                cursor: isDebug ? 'pointer' : 'default',
                 background: isActive
                   ? confColor.bg
                   : isDone
@@ -384,7 +384,7 @@ export function WashingView({
                 transition: 'transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1)',
                 transform: isActive ? 'scale(1.03)' : 'none'
               }}
-              title={`Click to jump to Step ${step.id}`}
+              title={isDebug ? `Click to jump to Step ${step.id} (Debug)` : undefined}
             >
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <span style={{
