@@ -367,6 +367,8 @@ export function useStepRecognition({
         handsPresent: result.ruleConditions?.handsPresent,
         movementCheck: result.ruleConditions?.movementCheck,
         stepSatisfied: (stepMatch && confidenceCheck) || Boolean(result.geometryRulePassed),
+        geometryRulePassed: Boolean(result.geometryRulePassed),
+        geometryRuleName: result.geometryRuleName,
         debounceStreak: result.debounceStreak,
         activeTimeMs: Math.round(result.activeTimeMs || 0),
         elapsedSeconds: result.elapsedSeconds,

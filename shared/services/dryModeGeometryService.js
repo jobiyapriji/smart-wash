@@ -233,7 +233,25 @@ export function checkStep1PalmToPalm(handsData = [], thresholds = HANDWASH_CONFI
  * - One hand's palm centre inside or touching the other's bounding box
  */
 export function checkStep2PalmOverDorsum(handsData = [], thresholds = HANDWASH_CONFIG.GEOMETRY_THRESHOLDS) {
-  if (!handsData || handsData.length < 2) return false;
+  if (!handsData || handsData.length === 0) return false;
+
+  // Case A: Overlapping / stacked hands merged into 1 detected hand (dorsum rub)
+  if (handsData.length === 1) {
+    const h = handsData[0];
+    if (!h.landmarks) return false;
+    if (isMergedHand(h.landmarks, h.scale)) return true;
+
+    // In natural dorsum rubbing, one hand on top of another creates a merged silhouette:
+    const box = getHandBoundingBox(h.landmarks);
+    const handScale = h.scale || computeHandScale(h.landmarks);
+    const scaleRatio = box.width / Math.max(0.001, handScale);
+    if (scaleRatio >= 0.70 && box.area >= 0.012) {
+      return true;
+    }
+    return false;
+  }
+
+  // Case B: 2 detected hands
   const hA = handsData[0];
   const hB = handsData[1];
   if (!hA.landmarks || !hB.landmarks) return false;
@@ -241,18 +259,30 @@ export function checkStep2PalmOverDorsum(handsData = [], thresholds = HANDWASH_C
   const boxA = getHandBoundingBox(hA.landmarks);
   const boxB = getHandBoundingBox(hB.landmarks);
   const overlap = computeBoxOverlap(boxA, boxB);
-  const minOverlap = thresholds?.STEP_2_BOX_OVERLAP ?? 0.30; // lowered from 0.40
-  console.debug('[dryModeGeometry] Step2 overlap', { overlap, minOverlap });
-  if (overlap < minOverlap) return false;
+  const minOverlap = thresholds?.STEP_2_BOX_OVERLAP ?? 0.30;
 
   const palmA = hA.palmCenter || computePalmCenter(hA.landmarks);
   const palmB = hB.palmCenter || computePalmCenter(hB.landmarks);
   if (!palmA || !palmB) return false;
 
+  const palmDist = dist2D(palmA, palmB);
+  const scaleA = hA.scale || computeHandScale(hA.landmarks);
+  const scaleB = hB.scale || computeHandScale(hB.landmarks);
+  const avgScale = Math.max(0.01, (scaleA + scaleB) / 2);
+  const normalizedPalmDist = palmDist / avgScale;
+
   const palmAInBoxB = isPointInBox(palmA, boxB, 0.08);
   const palmBInBoxA = isPointInBox(palmB, boxA, 0.08);
 
-  return palmAInBoxB || palmBInBoxA;
+  // Both hands present: require bounding box overlap >= 30% OR close palms with palm-in-box contact
+  if (overlap >= minOverlap && (palmAInBoxB || palmBInBoxA)) {
+    return true;
+  }
+  if (overlap >= 0.20 && normalizedPalmDist <= 0.85) {
+    return true;
+  }
+
+  return false;
 }
 
 /**
