@@ -307,28 +307,7 @@ export function KioskCamera({
         zIndex: 20
       }}>
         {/* Top Camera Status Bar */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div style={{
-            background: '#FFFDF5',
-            padding: '6px 14px',
-            borderRadius: '9999px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-            border: '2px solid #1E293B',
-            boxShadow: '2px 2px 0px #1E293B'
-          }}>
-            <span style={{
-              width: '10px',
-              height: '10px',
-              borderRadius: '50%',
-              background: state === 'washing' ? '#8B5CF6' : state === 'identifying' ? '#F472B6' : '#34D399',
-              border: '1.5px solid #1E293B'
-            }} />
-            <span style={{ fontSize: '12px', fontWeight: 700, color: '#1E293B', fontFamily: 'Outfit, sans-serif' }}>
-              {t('ai_vision_engine')}
-            </span>
-          </div>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center' }}>
 
           {state === 'identifying' && (
             <div style={{

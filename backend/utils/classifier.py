@@ -1,4 +1,7 @@
-from ultralytics import YOLO
+try:
+    from ultralytics import YOLO
+except ImportError:
+    YOLO = None  # Optional fallback; used only if YOLO models are needed
 
 class Classifier:
     def __init__(self, model, model_path=None):

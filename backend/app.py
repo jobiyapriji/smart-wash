@@ -1,4 +1,7 @@
-from ultralytics import YOLO
+try:
+    from ultralytics import YOLO
+except ImportError:
+    YOLO = None  # YOLO optional; LSTM will be used
 import os
 try:
     from .lstm_engine import LSTMHandwashClassifier, SessionLandmarkBuffer

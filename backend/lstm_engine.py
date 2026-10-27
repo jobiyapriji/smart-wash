@@ -12,6 +12,7 @@ Provides:
 import os
 import json
 import logging
+import time
 from collections import deque
 import numpy as np
 import cv2
@@ -62,13 +63,30 @@ class LSTMHandwashClassifier:
     """
     Centralized Model & MediaPipe Service loaded once on application startup.
     """
-    def __init__(self, model_dir=None):
+    def __init__(self, model_dir: str | None = None):
+        """Initialise the LSTM classifier.
+        *model_dir* can be an absolute or relative path. If omitted, the
+        SMART_WASH_MODEL_DIR environment variable is consulted. If that is also
+        unset, the default production directory is used.
+        """
         base_dir = os.path.dirname(os.path.abspath(__file__))
+        # Resolve model directory: env var > argument > default
         if model_dir is None:
+            env_dir = os.getenv("SMART_WASH_MODEL_DIR")
+            model_dir = env_dir if env_dir else None
+        if not model_dir:
             model_dir = os.path.join(base_dir, "models", "lstm")
-
+        else:
+            # If the env var provides a relative path, interpret it relative to the
+            # current working directory, otherwise keep it absolute.
+            if not os.path.isabs(model_dir):
+                model_dir = os.path.abspath(model_dir)
+            else:
+                model_dir = os.path.abspath(model_dir)
+        
         weights_path = os.path.join(model_dir, "handwash_lstm.pt")
         config_path = os.path.join(model_dir, "config.json")
+        self.model_dir = model_dir
         mediapipe_task_path = os.path.join(base_dir, "models", "mediapipe", "hand_landmarker.task")
 
         if not os.path.exists(weights_path) or not os.path.exists(config_path):
@@ -103,9 +121,9 @@ class LSTMHandwashClassifier:
             base_options=BaseOptions(model_asset_path=mediapipe_task_path),
             running_mode=VisionRunningMode.IMAGE,
             num_hands=2,
-            min_hand_detection_confidence=0.3,
-            min_hand_presence_confidence=0.3,
-            min_tracking_confidence=0.3
+            min_hand_detection_confidence=0.0,
+            min_hand_presence_confidence=0.0,
+            min_tracking_confidence=0.0
         )
         self.landmarker = HandLandmarker.create_from_options(options)
         logger.info("MediaPipe HandLandmarker initialized successfully.")
@@ -115,18 +133,16 @@ class LSTMHandwashClassifier:
         pts = np.array([[lm.x, lm.y, lm.z] for lm in landmarks_21], dtype=np.float32)
         wrist = pts[0]
         translated = pts - wrist
-        middle_mcp = translated[9]
-        scale = np.linalg.norm(middle_mcp)
-        if scale > 1e-5:
-            normalized = translated / scale
-        else:
-            normalized = translated
+        middle_mcp = translated[9]  # landmark 9 = middle finger MCP
+        scale = np.linalg.norm(middle_mcp)  # training scale: wrist to middle MCP
+        # Avoid division by zero
+        normalized = translated / scale if scale > 1e-5 else translated
         return normalized.flatten()
 
     def extract_features(self, frame_bgr):
         """
         Extracts 126-dimensional canonical landmark feature vector from an OpenCV BGR frame.
-        Identical to the training pipeline.
+        Fully position-invariant and scale-invariant anywhere in the camera view.
         """
         rgb = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2RGB)
         mp_img = mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb)
@@ -136,39 +152,42 @@ class LSTMHandwashClassifier:
         num_hands = len(res.hand_landmarks) if res.hand_landmarks else 0
         avg_conf = 0.0
 
+        raw_landmarks = []
+        if res.hand_landmarks:
+            for hand_lms in res.hand_landmarks:
+                raw_landmarks.append([
+                    {"x": round(float(lm.x), 4), "y": round(float(lm.y), 4), "z": round(float(lm.z), 4)}
+                    for lm in hand_lms
+                ])
+
         if num_hands == 0:
-            return feat, 0, 0.0
+            return feat, 0, 0.0, []
 
         if num_hands == 1:
-            label = res.handedness[0][0].category_name if res.handedness else "Right"
-            avg_conf = float(res.handedness[0][0].score) if res.handedness else 0.8
+            avg_conf = float(res.handedness[0][0].score) if res.handedness else 0.85
             hand_norm = self.normalize_single_hand(res.hand_landmarks[0])
 
-            # Check for merged / overlapping palms in a single detected hand region
-            pts = np.array([[lm.x, lm.y] for lm in res.hand_landmarks[0]], dtype=np.float32)
-            min_xy = pts.min(axis=0)
-            max_xy = pts.max(axis=0)
-            box_w = max(0.001, max_xy[0] - min_xy[0])
-            box_h = max(0.001, max_xy[1] - min_xy[1])
-            aspect_ratio = box_w / box_h
-
+            # Mirror hand to simulate merged hand overlap, preserving handedness slotting
             mirrored = hand_norm.copy().reshape(-1, 3)
             mirrored[:, 0] = -mirrored[:, 0]
             mirrored_flat = mirrored.flatten()
-
-            if label.lower() == "left":
+            # Determine handedness label (default to right if unavailable)
+            label = res.handedness[0][0].category_name.lower() if res.handedness else "right"
+            if label == "left":
                 feat[0:HAND_FEATURE_DIM] = hand_norm
                 feat[HAND_FEATURE_DIM:FEATURE_DIM] = mirrored_flat
             else:
                 feat[0:HAND_FEATURE_DIM] = mirrored_flat
                 feat[HAND_FEATURE_DIM:FEATURE_DIM] = hand_norm
+            # Report two hands so downstream logic treats it as a two‑hand frame
             num_hands = 2
         else:
+            # Handedness-aware slot assignment (mirrors training pipeline)
             h0_label = res.handedness[0][0].category_name.lower() if res.handedness else "left"
             h1_label = res.handedness[1][0].category_name.lower() if len(res.handedness) > 1 else "right"
-            s0 = float(res.handedness[0][0].score) if res.handedness else 0.8
-            s1 = float(res.handedness[1][0].score) if len(res.handedness) > 1 else 0.8
-            avg_conf = (s0 + s1) / 2.0
+            score0 = float(res.handedness[0][0].score) if (res.handedness and len(res.handedness) > 0 and len(res.handedness[0]) > 0) else 0.85
+            score1 = float(res.handedness[1][0].score) if (res.handedness and len(res.handedness) > 1 and len(res.handedness[1]) > 0) else 0.85
+            avg_conf = (score0 + score1) / 2.0
 
             h0_norm = self.normalize_single_hand(res.hand_landmarks[0])
             h1_norm = self.normalize_single_hand(res.hand_landmarks[1])
@@ -180,16 +199,17 @@ class LSTMHandwashClassifier:
                 feat[0:HAND_FEATURE_DIM] = h1_norm
                 feat[HAND_FEATURE_DIM:FEATURE_DIM] = h0_norm
             else:
+                # Fallback to spatial ordering if handedness ambiguous
                 x0 = res.hand_landmarks[0][0].x
                 x1 = res.hand_landmarks[1][0].x
-                if x0 < x1:
+                if x0 <= x1:
                     feat[0:HAND_FEATURE_DIM] = h0_norm
                     feat[HAND_FEATURE_DIM:FEATURE_DIM] = h1_norm
                 else:
                     feat[0:HAND_FEATURE_DIM] = h1_norm
                     feat[HAND_FEATURE_DIM:FEATURE_DIM] = h0_norm
 
-        return feat, num_hands, avg_conf
+        return feat, num_hands, avg_conf, raw_landmarks
 
     def predict_sequence(self, sequence_tensor_np):
         """
@@ -249,21 +269,46 @@ class SessionLandmarkBuffer:
                 "top5": {"background": 1.0}
             }
 
-        feat, num_hands, hand_conf = self.classifier.extract_features(frame_bgr)
+        feat, num_hands, hand_conf, raw_landmarks = self.classifier.extract_features(frame_bgr)
+
+        now_ts = time.time()
+        should_diag_log = (now_ts - getattr(self, "last_diag_log_time", 0)) > 1.5
+        if should_diag_log:
+            self.last_diag_log_time = now_ts
+            feat_non_zeros = int(np.count_nonzero(feat))
+            logger.info(
+                f"[BOUNDARY:C:BackendReceive] frame_shape={frame_bgr.shape}, num_hands={num_hands}, "
+                f"hand_conf={hand_conf:.2f}, feat_shape={feat.shape}, feat_non_zeros={feat_non_zeros}, "
+                f"buffer_len={len(self.buffer)}, missing_streak={self.missing_hands_streak}"
+            )
 
         if num_hands == 0:
             self.missing_hands_streak += 1
-            # Append zero feature to avoid sudden sequence starvation
-            self.buffer.append(feat)
-            if self.missing_hands_streak >= 25:  # ~2.5s buffer retention at 10fps
+            if should_diag_log:
+                logger.info(f"[BOUNDARY:D:LSTMPrediction] missing_hands: streak={self.missing_hands_streak}")
+            # If hand loss persists beyond 2 seconds, clear buffer and report background
+            if self.missing_hands_streak >= 20:  # ~2.0s at 10fps
                 self.buffer.clear()
                 return {
                     "class": "background",
                     "confidence": 1.0,
                     "status": "missing_hands",
                     "hand_count": 0,
+                    "movement": 0.0,
+                    "is_moving": False,
+                    "landmarks": [],
                     "top5": {"background": 1.0}
                 }
+            # For short gaps, reuse the last valid prediction to avoid flicker
+            return {
+                **self.last_valid_prediction,
+                "status": "missing_hands",
+                "hand_count": 0,
+                "movement": 0.0,
+                "is_moving": False,
+                "landmarks": [],
+                "top5": {"background": 1.0}
+            }
         else:
             self.missing_hands_streak = 0
             self.buffer.append(feat)
@@ -271,6 +316,8 @@ class SessionLandmarkBuffer:
         # Fast Warm-Up: If we have at least 5 frames, tile/resample to 30 frames
         # so inference starts immediately within < 150ms instead of waiting 1-2 seconds!
         if len(self.buffer) < 5:
+            if should_diag_log:
+                logger.info(f"[BOUNDARY:D:LSTMPrediction] buffering: {len(self.buffer)}/5 frames")
             return {
                 "class": "background",
                 "confidence": 0.50,
@@ -278,6 +325,10 @@ class SessionLandmarkBuffer:
                 "buffered_frames": len(self.buffer),
                 "required_frames": 5,
                 "hand_count": num_hands,
+                "hand_confidence": hand_conf,
+                "movement": 0.0,
+                "is_moving": False,
+                "landmarks": raw_landmarks,
                 "top5": {"background": 0.50}
             }
 
@@ -291,12 +342,38 @@ class SessionLandmarkBuffer:
 
         pred_class, pred_conf, top5 = self.classifier.predict_sequence(seq_array)
 
+        # Dynamic motion evaluation across recent buffered frames
+        motion_score = 0.0
+        is_moving = False
+        if len(self.buffer) >= 2:
+            recent_frames = list(self.buffer)[-min(6, len(self.buffer)):]
+            diffs = []
+            for idx in range(1, len(recent_frames)):
+                f_prev = recent_frames[idx - 1]
+                f_curr = recent_frames[idx]
+                mask = (f_prev != 0.0) & (f_curr != 0.0)
+                if np.any(mask):
+                    d = np.abs(f_curr[mask] - f_prev[mask])
+                    diffs.append(float(np.mean(d) * 1.5 + np.max(d) * 0.4))
+            if diffs:
+                motion_score = float(np.mean(diffs))
+                is_moving = motion_score >= 0.015
+
+        if should_diag_log:
+            logger.info(
+                f"[BOUNDARY:D:LSTMPrediction] seq_shape={seq_array.shape}, pred_class={pred_class}, "
+                f"pred_conf={pred_conf:.3f}, motion={motion_score:.4f}, is_moving={is_moving}, top5={top5}"
+            )
+
         result = {
             "class": pred_class,
             "confidence": pred_conf,
             "status": "active",
             "hand_count": num_hands,
             "hand_confidence": hand_conf,
+            "movement": round(motion_score, 4),
+            "is_moving": is_moving,
+            "landmarks": raw_landmarks,
             "top5": top5
         }
         self.last_valid_prediction = result

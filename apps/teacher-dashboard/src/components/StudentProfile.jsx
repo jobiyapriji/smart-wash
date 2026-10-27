@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import * as faceapi from '@vladmandic/face-api';
 import { updateStudent } from '../../../../shared/services/studentService.js';
 import { getStudentSessions } from '../../../../shared/services/sessionService.js';
+import { calculateStreak } from '../../../../shared/services/scoringService.js';
 import { ArrowLeft, Camera, RefreshCw, Check, AlertCircle, Flame, Award, Calendar } from 'lucide-react';
 
 export function StudentProfile({ students = [], refreshData }) {
@@ -93,6 +94,8 @@ export function StudentProfile({ students = [], refreshData }) {
       canvas.width = video.videoWidth;
       canvas.height = video.videoHeight;
       const ctx = canvas.getContext('2d');
+      ctx.translate(canvas.width, 0);
+      ctx.scale(-1, 1);
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
       setCapturedPhoto(canvas.toDataURL('image/jpeg', 0.8));
       
@@ -122,7 +125,10 @@ export function StudentProfile({ students = [], refreshData }) {
     }
   };
 
-  const avgScore = sessions.length > 0 ? Math.round(sessions.reduce((acc, s) => acc + s.score, 0) / sessions.length) : 'N/A';
+  const avgScore = sessions.length > 0 
+    ? Math.round(sessions.reduce((acc, s) => acc + (s.complianceScore ?? s.score ?? 0), 0) / sessions.length) 
+    : 'N/A';
+  const currentStreak = calculateStreak(sessions);
 
   return (
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '24px', fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
@@ -283,7 +289,8 @@ export function StudentProfile({ students = [], refreshData }) {
                     display: stream && !capturedPhoto ? 'block' : 'none',
                     width: '100%',
                     height: '100%',
-                    objectFit: 'cover'
+                    objectFit: 'cover',
+                    transform: 'scaleX(-1)'
                   }}
                 />
                 {capturedPhoto && (
@@ -299,23 +306,48 @@ export function StudentProfile({ students = [], refreshData }) {
               )}
               
               {stream && !capturedPhoto && (
-                <button
-                  onClick={captureAndExtract}
-                  disabled={isProcessing}
-                  style={{
-                    padding: '10px',
-                    background: '#34D399',
-                    color: '#1E293B',
-                    border: '2px solid #1E293B',
-                    borderRadius: '12px',
-                    fontWeight: 800,
-                    cursor: 'pointer',
-                    boxShadow: '2px 2px 0 0 #1E293B',
-                    fontFamily: 'Outfit, sans-serif'
-                  }}
-                >
-                  {isProcessing ? 'Analyzing Face...' : '📸 Capture Face'}
-                </button>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <button
+                    onClick={captureAndExtract}
+                    disabled={isProcessing}
+                    style={{
+                      flex: 1,
+                      padding: '10px',
+                      background: '#34D399',
+                      color: '#1E293B',
+                      border: '2px solid #1E293B',
+                      borderRadius: '12px',
+                      fontWeight: 800,
+                      cursor: 'pointer',
+                      boxShadow: '2px 2px 0 0 #1E293B',
+                      fontFamily: 'Outfit, sans-serif'
+                    }}
+                  >
+                    {isProcessing ? 'Analyzing Face...' : '📸 Capture Face'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      stopCamera();
+                      setIsReEnrolling(false);
+                      setError(null);
+                    }}
+                    disabled={isProcessing}
+                    style={{
+                      padding: '10px 14px',
+                      background: '#F1F5F9',
+                      color: '#1E293B',
+                      border: '2px solid #1E293B',
+                      borderRadius: '12px',
+                      fontWeight: 800,
+                      cursor: 'pointer',
+                      boxShadow: '2px 2px 0 0 #1E293B',
+                      fontFamily: 'Outfit, sans-serif'
+                    }}
+                  >
+                    Cancel
+                  </button>
+                </div>
               )}
               
               {capturedPhoto && (
@@ -336,7 +368,7 @@ export function StudentProfile({ students = [], refreshData }) {
                       fontFamily: 'Outfit, sans-serif'
                     }}
                   >
-                    Save Descriptor
+                    {isProcessing ? 'Saving...' : 'Save Descriptor'}
                   </button>
                   <button
                     onClick={startCamera}
@@ -354,6 +386,29 @@ export function StudentProfile({ students = [], refreshData }) {
                     }}
                   >
                     Retake
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      stopCamera();
+                      setIsReEnrolling(false);
+                      setCapturedPhoto(null);
+                      setError(null);
+                    }}
+                    disabled={isProcessing}
+                    style={{
+                      padding: '10px 14px',
+                      background: '#F1F5F9',
+                      color: '#1E293B',
+                      border: '2px solid #1E293B',
+                      borderRadius: '12px',
+                      fontWeight: 800,
+                      cursor: 'pointer',
+                      boxShadow: '2px 2px 0 0 #1E293B',
+                      fontFamily: 'Outfit, sans-serif'
+                    }}
+                  >
+                    Cancel
                   </button>
                 </div>
               )}
@@ -414,15 +469,28 @@ export function StudentProfile({ students = [], refreshData }) {
             background: '#FFFFFF',
             borderRadius: '18px',
             padding: '18px',
-            border: '2px solid #1E293B',
+            border: '2.5px solid #1E293B',
             boxShadow: '3px 3px 0 0 #1E293B'
           }}>
             <div style={{ fontSize: '11px', color: '#64748B', fontWeight: 800, textTransform: 'uppercase', fontFamily: 'Outfit, sans-serif' }}>
               Current Streak
             </div>
-            <div style={{ fontSize: '28px', fontWeight: 900, color: '#F59E0B', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '6px', fontFamily: 'Outfit, sans-serif' }}>
-              <span>{student.streak || 0}</span>
-              <Flame size={22} color="#F59E0B" fill="#F59E0B" />
+            <div style={{
+              fontSize: '28px',
+              fontWeight: 900,
+              color: currentStreak > 0 ? '#F59E0B' : '#94A3B8',
+              marginTop: '4px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              fontFamily: 'Outfit, sans-serif'
+            }}>
+              <span>{currentStreak}</span>
+              <Flame
+                size={22}
+                color={currentStreak > 0 ? '#F59E0B' : '#94A3B8'}
+                fill={currentStreak > 0 ? '#F59E0B' : 'none'}
+              />
             </div>
           </div>
         </div>
@@ -453,34 +521,46 @@ export function StudentProfile({ students = [], refreshData }) {
                 <tbody>
                   {sessions.map(s => (
                     <tr
-                      key={s.id}
+                      key={s.id || s.sessionId}
                       style={{ borderBottom: '1px solid #E2E8F0', transition: 'background 0.15s ease' }}
                       onMouseEnter={e => e.currentTarget.style.background = '#F8FAFC'}
                       onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                     >
                       <td style={{ padding: '12px 14px', color: '#1E293B', fontWeight: 600 }}>
-                        {new Date(s.timestamp?.seconds ? s.timestamp.seconds * 1000 : s.timestamp).toLocaleDateString()}
+                        {new Date(s.timestamp?.seconds ? s.timestamp.seconds * 1000 : (s.timestamp || Date.now())).toLocaleDateString(undefined, {
+                          month: 'short',
+                          day: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        })}
                       </td>
                       <td style={{ padding: '12px 14px', fontWeight: 800, color: '#1E293B', fontFamily: 'Outfit, sans-serif' }}>
-                        <span style={{
-                          background: s.score >= 80 ? '#D1FAE5' : '#FEF3C7',
-                          padding: '3px 10px',
-                          borderRadius: '9999px',
-                          border: '1.5px solid #1E293B'
-                        }}>
-                          {s.score} / 100
-                        </span>
+                        {(() => {
+                          const scoreVal = s.complianceScore ?? s.score ?? 0;
+                          return (
+                            <span style={{
+                              background: scoreVal >= 80 ? '#D1FAE5' : (scoreVal >= 70 ? '#FEF3C7' : '#FEE2E2'),
+                              padding: '3px 10px',
+                              borderRadius: '9999px',
+                              border: '1.5px solid #1E293B'
+                            }}>
+                              {scoreVal} / 100
+                            </span>
+                          );
+                        })()}
                       </td>
                       <td style={{ padding: '12px 14px' }}>
                         <span style={{
-                          background: '#F1F5F9',
-                          color: '#64748B',
+                          background: s.status === 'completed' ? '#D1FAE5' : (s.status === 'abandoned' ? '#FEE2E2' : '#F1F5F9'),
+                          color: '#1E293B',
                           padding: '3px 8px',
                           borderRadius: '6px',
                           fontSize: '11px',
-                          fontWeight: 700
+                          fontWeight: 700,
+                          border: '1px solid #CBD5E1',
+                          textTransform: 'capitalize'
                         }}>
-                          {s.status}
+                          {s.status || 'completed'}
                         </span>
                       </td>
                     </tr>

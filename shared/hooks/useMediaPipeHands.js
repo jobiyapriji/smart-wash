@@ -31,6 +31,7 @@ export function useMediaPipeHands({
   const timerRef = useRef(null);
   const isProcessingFrameRef = useRef(false);
   const lastFrameSentTimeRef = useRef(0);
+  const lastDiagLogTimeRef = useRef(0);
 
   const effectiveThreshold = mode === 'dry'
     ? HANDWASH_CONFIG.DRY_MOVEMENT_PATH_THRESHOLD
@@ -42,8 +43,12 @@ export function useMediaPipeHands({
 
     async function initHands() {
       try {
-        const { Hands } = await import('@mediapipe/hands');
-        const hands = new Hands({
+        const mpHandsModule = await import('@mediapipe/hands');
+        const HandsClass = mpHandsModule.Hands || mpHandsModule.default?.Hands || window.Hands;
+        if (!HandsClass) {
+          throw new Error('Hands constructor not found in @mediapipe/hands module export');
+        }
+        const hands = new HandsClass({
           locateFile: (file) => `/mediapipe/hands/${file}`
         });
 
@@ -106,6 +111,18 @@ export function useMediaPipeHands({
             setHandMovement(motionResult.movement);
             setIsHandsMoving(motionResult.isMoving);
             setHandsData(motionResult.handsData || []);
+
+            // Controlled, throttled diagnostic log (once every 1.5s)
+            if (now - (lastDiagLogTimeRef.current || 0) > 1500) {
+              lastDiagLogTimeRef.current = now;
+              console.log('[DIAG:FrontendMediaPipe]', {
+                rawHands: rawLandmarksList.length,
+                qualifyingHands: qualifyingHands.length,
+                landmarkPoints: rawLandmarksList.map(lm => lm.length),
+                movement: Number(motionResult.movement.toFixed(4)),
+                isMoving: motionResult.isMoving
+              });
+            }
           } catch (err) {
             console.warn('[useMediaPipeHands] Error in onResults:', err);
           } finally {
@@ -113,14 +130,20 @@ export function useMediaPipeHands({
           }
         });
 
-        await hands.initialize();
-        if (isMounted) {
-          handsInstanceRef.current = hands;
-          setIsModelReady(true);
-          console.log('[useMediaPipeHands] MediaPipe Hands model initialized successfully');
-        }
+        // Initialize hands instance and mark model ready immediately so frame processing loop can engage
+        handsInstanceRef.current = hands;
+        setIsModelReady(true);
+        console.log('[DIAG:FrontendMediaPipe] Hands instance created; starting background initialize()');
+
+        hands.initialize()
+          .then(() => {
+            console.log('[DIAG:FrontendMediaPipe] MediaPipe Hands model initialized successfully');
+          })
+          .catch((err) => {
+            console.warn('[DIAG:FrontendMediaPipe] Hands initialize() warning (will lazily initialize on send):', err.message);
+          });
       } catch (err) {
-        console.warn('[useMediaPipeHands] Could not initialize MediaPipe Hands locally:', err.message);
+        console.error('[DIAG:FrontendMediaPipe] Could not construct MediaPipe Hands locally:', err.message);
       }
     }
 
@@ -149,6 +172,17 @@ export function useMediaPipeHands({
       const video = videoRef?.current;
       const isVideoReady = video && !video.paused && !video.ended && video.readyState >= 2 && video.videoWidth > 0 && video.videoHeight > 0;
       if (!isVideoReady || !handsInstanceRef.current) {
+        const now = performance.now();
+        if (now - (lastDiagLogTimeRef.current || 0) > 3000) {
+          lastDiagLogTimeRef.current = now;
+          console.log('[DIAG:FrontendMediaPipe:VideoWait]', {
+            hasVideoRef: Boolean(video),
+            readyState: video?.readyState,
+            paused: video?.paused,
+            videoWidth: video?.videoWidth,
+            hasHandsInstance: Boolean(handsInstanceRef.current)
+          });
+        }
         return;
       }
 
@@ -166,7 +200,10 @@ export function useMediaPipeHands({
         lastFrameSentTimeRef.current = now;
         await handsInstanceRef.current.send({ image: video });
       } catch (err) {
-        console.warn('[useMediaPipeHands] Frame inference error:', err.message);
+        if (now - (lastDiagLogTimeRef.current || 0) > 2000) {
+          lastDiagLogTimeRef.current = now;
+          console.warn('[DIAG:FrontendMediaPipe:SendError]', err.message);
+        }
       } finally {
         isProcessingFrameRef.current = false;
       }

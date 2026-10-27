@@ -91,12 +91,28 @@ export function calculateHandwashScore(completedSteps = [], missedSteps = []) {
 }
 
 export function calculateStreak(sessionHistory = []) {
-  if (!sessionHistory || sessionHistory.length === 0) return 0;
+  if (!sessionHistory || !Array.isArray(sessionHistory) || sessionHistory.length === 0) {
+    return 0;
+  }
+  
+  // Sort descending by timestamp (newest sessions first)
+  const sorted = [...sessionHistory].sort((a, b) => {
+    const tA = a.timestamp?.seconds ? a.timestamp.seconds * 1000 : new Date(a.timestamp || 0).getTime();
+    const tB = b.timestamp?.seconds ? b.timestamp.seconds * 1000 : new Date(b.timestamp || 0).getTime();
+    return tB - tA;
+  });
+
   let streak = 0;
-  for (const session of sessionHistory) {
-    if ((session.score || 0) >= 70) {
+  for (const session of sorted) {
+    // Exclude developer / dry test sessions
+    if (session.mode === 'dry' || session.mode === 'test') continue;
+    
+    const score = session.complianceScore ?? session.score ?? 0;
+    // A compliant session requires score >= 70 and not abandoned
+    if (score >= 70 && session.status !== 'abandoned') {
       streak++;
     } else {
+      // Streak breaks at the most recent non-compliant session
       break;
     }
   }

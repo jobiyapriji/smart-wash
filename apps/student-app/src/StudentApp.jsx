@@ -333,11 +333,14 @@ export function StudentKioskApp({ useMock = false }) {
       console.log('[StudentApp] Session omitted from Firebase persistence. Criteria met?', shouldSave);
     }
 
+    // Compute session duration from startTime
+    const sessionDurationMs = state.startTime ? Date.now() - state.startTime : null;
     dispatch({
       type: 'SCORING_COMPLETE',
       payload: {
         score: computedScore,
-        steps: stepsToScore
+        steps: stepsToScore,
+        sessionDurationMs
       }
     });
   }, [state.completedSteps, state.sessionId, state.student, detectionMode]);
@@ -386,7 +389,7 @@ export function StudentKioskApp({ useMock = false }) {
   if (isInitializingKiosk) {
     return (
       <LoadingPage
-        message="Loading Kiosk..."
+        message="Loading Wash Station..."
         duration={1000}
         onComplete={() => setIsInitializingKiosk(false)}
       />
@@ -396,7 +399,7 @@ export function StudentKioskApp({ useMock = false }) {
   if (isExiting) {
     return (
       <LoadingPage
-        message="Exiting Kiosk..."
+        message="Exiting Wash Station..."
         duration={400}
       />
     );
@@ -432,21 +435,20 @@ export function StudentKioskApp({ useMock = false }) {
       }}>
         {/* Brand & Mode */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-          <div style={{
-            width: '44px',
-            height: '44px',
-            borderRadius: '14px',
-            background: 'var(--accent)',
-            border: '2px solid #1E293B',
-            boxShadow: '3px 3px 0 0 #1E293B',
-            transform: 'rotate(-4deg)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: '24px'
-          }}>
-            🧼
-          </div>
+          <img
+            src="/assets/smart_wash_logo.png"
+            alt="SMART WASH Logo"
+            style={{
+              width: '46px',
+              height: '46px',
+              borderRadius: '14px',
+              border: '2px solid #1E293B',
+              boxShadow: '3px 3px 0 0 #1E293B',
+              objectFit: 'contain',
+              background: '#FFFFFF',
+              flexShrink: 0
+            }}
+          />
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
               <h1 style={{
@@ -473,7 +475,10 @@ export function StudentKioskApp({ useMock = false }) {
               </span>
             </div>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '2px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '2px', flexWrap: 'wrap' }}>
+              <span style={{ fontSize: '11px', color: '#64748B', fontWeight: 700, fontFamily: 'Outfit, sans-serif' }}>
+                Little hands, healthy habits
+              </span>
               {isMockFirebase && (
                 <span style={{
                   padding: '2px 6px',
@@ -975,6 +980,7 @@ export function StudentKioskApp({ useMock = false }) {
               score={state.finalScore}
               student={state.student}
               completedSteps={state.completedSteps}
+              sessionDurationMs={state.sessionDurationMs}
               onReset={handleResetToIdle}
             />
           )}

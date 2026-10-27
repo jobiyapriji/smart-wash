@@ -22,8 +22,195 @@ import {
 } from 'firebase/firestore';
 import { createDefaultSession, validateSessionContract } from '../types.js';
 
-// In-memory storage for mock environment / offline testing
-const mockSessionsStore = new Map();
+// In-memory & localStorage storage for mock environment / offline testing
+const SEED_SESSIONS = [
+  // Alex River (STU_101): 5 consecutive high-scoring sessions (Streak: 5, Avg: 94)
+  {
+    id: 'seed_sess_101_1',
+    sessionId: 'seed_sess_101_1',
+    studentId: 'STU_101',
+    studentName: 'Alex River',
+    classId: 'Grade 5-A',
+    timestamp: new Date(Date.now() - 2 * 3600 * 1000).toISOString(),
+    score: 96,
+    complianceScore: 96,
+    status: 'completed',
+    mode: 'strict',
+    completedSteps: [1, 2, 3, 4, 5, 6],
+    steps: [1, 2, 3, 4, 5, 6]
+  },
+  {
+    id: 'seed_sess_101_2',
+    sessionId: 'seed_sess_101_2',
+    studentId: 'STU_101',
+    studentName: 'Alex River',
+    classId: 'Grade 5-A',
+    timestamp: new Date(Date.now() - 24 * 3600 * 1000).toISOString(),
+    score: 92,
+    complianceScore: 92,
+    status: 'completed',
+    mode: 'strict',
+    completedSteps: [1, 2, 3, 4, 5, 6],
+    steps: [1, 2, 3, 4, 5, 6]
+  },
+  {
+    id: 'seed_sess_101_3',
+    sessionId: 'seed_sess_101_3',
+    studentId: 'STU_101',
+    studentName: 'Alex River',
+    classId: 'Grade 5-A',
+    timestamp: new Date(Date.now() - 48 * 3600 * 1000).toISOString(),
+    score: 98,
+    complianceScore: 98,
+    status: 'completed',
+    mode: 'strict',
+    completedSteps: [1, 2, 3, 4, 5, 6],
+    steps: [1, 2, 3, 4, 5, 6]
+  },
+  {
+    id: 'seed_sess_101_4',
+    sessionId: 'seed_sess_101_4',
+    studentId: 'STU_101',
+    studentName: 'Alex River',
+    classId: 'Grade 5-A',
+    timestamp: new Date(Date.now() - 72 * 3600 * 1000).toISOString(),
+    score: 90,
+    complianceScore: 90,
+    status: 'completed',
+    mode: 'strict',
+    completedSteps: [1, 2, 3, 4, 5],
+    steps: [1, 2, 3, 4, 5]
+  },
+  {
+    id: 'seed_sess_101_5',
+    sessionId: 'seed_sess_101_5',
+    studentId: 'STU_101',
+    studentName: 'Alex River',
+    classId: 'Grade 5-A',
+    timestamp: new Date(Date.now() - 96 * 3600 * 1000).toISOString(),
+    score: 95,
+    complianceScore: 95,
+    status: 'completed',
+    mode: 'strict',
+    completedSteps: [1, 2, 3, 4, 5, 6],
+    steps: [1, 2, 3, 4, 5, 6]
+  },
+
+  // Jordan Taylor (STU_102): 3 consecutive good sessions (Streak: 3, Avg: 85)
+  {
+    id: 'seed_sess_102_1',
+    sessionId: 'seed_sess_102_1',
+    studentId: 'STU_102',
+    studentName: 'Jordan Taylor',
+    classId: 'Grade 5-A',
+    timestamp: new Date(Date.now() - 4 * 3600 * 1000).toISOString(),
+    score: 88,
+    complianceScore: 88,
+    status: 'completed',
+    mode: 'strict',
+    completedSteps: [1, 2, 3, 4, 5],
+    steps: [1, 2, 3, 4, 5]
+  },
+  {
+    id: 'seed_sess_102_2',
+    sessionId: 'seed_sess_102_2',
+    studentId: 'STU_102',
+    studentName: 'Jordan Taylor',
+    classId: 'Grade 5-A',
+    timestamp: new Date(Date.now() - 25 * 3600 * 1000).toISOString(),
+    score: 85,
+    complianceScore: 85,
+    status: 'completed',
+    mode: 'strict',
+    completedSteps: [1, 2, 3, 4, 5],
+    steps: [1, 2, 3, 4, 5]
+  },
+  {
+    id: 'seed_sess_102_3',
+    sessionId: 'seed_sess_102_3',
+    studentId: 'STU_102',
+    studentName: 'Jordan Taylor',
+    classId: 'Grade 5-A',
+    timestamp: new Date(Date.now() - 49 * 3600 * 1000).toISOString(),
+    score: 82,
+    complianceScore: 82,
+    status: 'completed',
+    mode: 'strict',
+    completedSteps: [1, 2, 3, 4],
+    steps: [1, 2, 3, 4]
+  },
+
+  // Sam Chen (STU_103): Low recent score (55 < 70) breaks streak (Streak: 0, Avg: 70)
+  {
+    id: 'seed_sess_103_1',
+    sessionId: 'seed_sess_103_1',
+    studentId: 'STU_103',
+    studentName: 'Sam Chen',
+    classId: 'Grade 5-B',
+    timestamp: new Date(Date.now() - 1 * 3600 * 1000).toISOString(),
+    score: 55,
+    complianceScore: 55,
+    status: 'completed',
+    mode: 'strict',
+    completedSteps: [1, 2],
+    steps: [1, 2]
+  },
+  {
+    id: 'seed_sess_103_2',
+    sessionId: 'seed_sess_103_2',
+    studentId: 'STU_103',
+    studentName: 'Sam Chen',
+    classId: 'Grade 5-B',
+    timestamp: new Date(Date.now() - 26 * 3600 * 1000).toISOString(),
+    score: 80,
+    complianceScore: 80,
+    status: 'completed',
+    mode: 'strict',
+    completedSteps: [1, 2, 3, 4],
+    steps: [1, 2, 3, 4]
+  },
+  {
+    id: 'seed_sess_103_3',
+    sessionId: 'seed_sess_103_3',
+    studentId: 'STU_103',
+    studentName: 'Sam Chen',
+    classId: 'Grade 5-B',
+    timestamp: new Date(Date.now() - 50 * 3600 * 1000).toISOString(),
+    score: 75,
+    complianceScore: 75,
+    status: 'completed',
+    mode: 'strict',
+    completedSteps: [1, 2, 3],
+    steps: [1, 2, 3]
+  }
+];
+
+const loadMockSessions = () => {
+  try {
+    if (typeof localStorage !== 'undefined') {
+      const stored = localStorage.getItem('smartwash_mock_sessions');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        return new Map(parsed);
+      }
+    }
+  } catch (e) {
+    console.warn('[sessionService] Could not load mock sessions from localStorage:', e);
+  }
+  return new Map(SEED_SESSIONS.map(s => [s.id, s]));
+};
+
+const mockSessionsStore = loadMockSessions();
+
+const saveMockSessions = () => {
+  try {
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem('smartwash_mock_sessions', JSON.stringify(Array.from(mockSessionsStore.entries())));
+    }
+  } catch (e) {
+    console.warn('[sessionService] Could not save mock sessions to localStorage:', e);
+  }
+};
 
 /**
  * Creates a new student handwashing session
@@ -54,6 +241,7 @@ export async function createSession(studentId, studentName, identityMethod = 'fa
   const mockId = `mock_session_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
   const createdSession = { ...initialSession, id: mockId };
   mockSessionsStore.set(mockId, createdSession);
+  saveMockSessions();
   return { id: mockId, session: createdSession };
 }
 

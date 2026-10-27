@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { HandsRubbingAnimation } from './HandsRubbingAnimation.jsx';
 import { Confetti } from './ui/Confetti.jsx';
 
 /**
@@ -128,9 +127,19 @@ export function LoadingPage({
           }}
         />
 
-        {/* The Cartoon Hand Rubbing Animation */}
+        {/* Official Project Logo - Only Logo */}
         <div style={{ marginBottom: '16px' }}>
-          <HandsRubbingAnimation size={170} />
+          <img
+            src="/assets/smart_wash_logo.png"
+            alt="SMART WASH Logo"
+            style={{
+              width: '150px',
+              height: '150px',
+              objectFit: 'contain',
+              display: 'block',
+              margin: '0 auto'
+            }}
+          />
         </div>
 
         {/* Title in Outfit */}
@@ -146,6 +155,15 @@ export function LoadingPage({
         >
           SMART WASH
         </h2>
+        <div style={{
+          fontSize: '13px',
+          fontWeight: 700,
+          color: 'var(--accent)',
+          fontFamily: 'Outfit, sans-serif',
+          margin: '0 0 10px 0'
+        }}>
+          Little hands, healthy habits
+        </div>
 
         {/* Loading text with rotating colored bouncing dots */}
         <div

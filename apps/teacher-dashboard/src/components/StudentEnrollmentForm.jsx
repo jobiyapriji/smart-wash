@@ -92,11 +92,13 @@ export function StudentEnrollmentForm({ onEnrollmentSuccess }) {
       const descriptor = Array.from(detections[0].descriptor);
       setExtractedDescriptor(descriptor);
 
-      // Capture photo to canvas
+      // Capture photo to canvas (mirrored to match natural preview)
       const canvas = canvasRef.current;
       canvas.width = video.videoWidth;
       canvas.height = video.videoHeight;
       const ctx = canvas.getContext('2d');
+      ctx.translate(canvas.width, 0);
+      ctx.scale(-1, 1);
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
       const photoBase64 = canvas.toDataURL('image/jpeg', 0.8);
       setCapturedPhoto(photoBase64);
@@ -192,7 +194,7 @@ export function StudentEnrollmentForm({ onEnrollmentSuccess }) {
             Enroll New Student
           </h2>
           <p style={{ margin: '6px 0 0 0', color: '#64748B', fontSize: '14px', fontWeight: 500 }}>
-            Register student profile and capture their biometric face descriptor for kiosk authentication.
+            Register student profile and capture their biometric face descriptor for wash station authentication.
           </p>
         </div>
 
@@ -383,7 +385,8 @@ export function StudentEnrollmentForm({ onEnrollmentSuccess }) {
                 display: stream && !capturedPhoto ? 'block' : 'none',
                 width: '100%',
                 height: '100%',
-                objectFit: 'cover'
+                objectFit: 'cover',
+                transform: 'scaleX(-1)'
               }}
             />
             

@@ -10,6 +10,7 @@ export const HANDWASH_CONFIG = {
   // "dry": Dry testing mode without soap, water, or foam (?mode=dry)
   DETECTION_MODE: 'strict',
 
+
   // 1. Detection Gating & Crediting (Rule 3)
   CONFIDENCE_THRESHOLD: 0.60,         // Strict mode YOLO model confidence threshold
   DRY_CONFIDENCE_THRESHOLD: 0.35,     // Dry mode lower classifier confidence threshold
@@ -27,12 +28,14 @@ export const HANDWASH_CONFIG = {
   HAND_STATE_HOLD_MS: 500,            // Hold last hand state for brief dropouts (< 500ms)
   GRACE_PERIOD_MS: 500,               // 500ms grace window before timer pauses
 
-  // 3. Movement Threshold from Hand Landmarks (Sliding 500ms Window)
-  MOVEMENT_WINDOW_MS: 500,            // 500 ms sliding window for cumulative path length
-  MOVEMENT_EMA_ALPHA: 0.50,           // Light EMA smoothing factor (0.5) to avoid jitter
-  DRY_MOVEMENT_PATH_THRESHOLD: 0.12,  // Dry mode movement threshold: 0.12 hand-widths / 500ms
-  STRICT_MOVEMENT_PATH_THRESHOLD: 0.25,// Strict mode movement threshold: 0.25 hand-widths / 500ms
-  MOVEMENT_THRESHOLD: 0.05,           // Baseline movement threshold (normalized path / scale)
+  // 3. Dynamic Movement Thresholds from Hand Landmarks (Sliding 500ms Window)
+  MOVEMENT_WINDOW_MS: 500,            // 500 ms sliding window for cumulative path length & articulation
+  MOVEMENT_EMA_ALPHA: 0.40,           // Light EMA smoothing factor to suppress camera noise while preserving rapid rub response
+  DRY_MOVEMENT_PATH_THRESHOLD: 0.025, // Dry mode movement threshold: sensitive for light rubbing
+  STRICT_MOVEMENT_PATH_THRESHOLD: 0.035, // Strict mode movement threshold: 3.5% of hand scale / 500ms
+  MOVEMENT_THRESHOLD: 0.020,          // Baseline movement threshold (normalized path / scale)
+  FINGERTIP_MOVEMENT_THRESHOLD: 0.030,// Fingertip velocity threshold for rotational steps 5 & 6
+  ARTICULATION_THRESHOLD: 0.018,      // Internal joint articulation threshold (wrist-invariant hand flexing)
 
   // 4. Overlapping & Merged Hands for Step 1
   MERGED_HAND_ASPECT_RATIO_MIN: 0.90, // Aspect ratio (width/height) indicating palms pressed together
@@ -44,7 +47,7 @@ export const HANDWASH_CONFIG = {
     STEP_1_FINGER_DIR_DOT: 0.35,      // Min dot product of palm-to-finger direction vectors (> 0.35)
     STEP_1_NORMAL_OPPOSITION: -0.15,  // Max 3D palm normal dot product (<= -0.15 indicates opposing palmar faces)
     STEP_1_BOX_OVERLAP: 0.20,         // Min bounding box overlap ratio (> 20%)
-    STEP_2_BOX_OVERLAP: 0.40,         // Min bounding box overlap ratio (> 40%)
+    STEP_2_BOX_OVERLAP: 0.30,         // Min bounding box overlap ratio (> 30%)
     STEP_3_BOX_OVERLAP: 0.45,         // Min bounding box overlap ratio (> 45%)
     STEP_3_MIN_ALTERNATIONS: 2,       // Min alternating x-order fingertip switches between left & right hand
     STEP_4_CURL_RATIO: 0.85,          // Max curled fingertip-to-palm distance ratio relative to hand scale

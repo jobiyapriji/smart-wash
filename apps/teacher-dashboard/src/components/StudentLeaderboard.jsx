@@ -17,7 +17,7 @@ export function StudentLeaderboard({ students = [] }) {
 
   const leaderboardData = (students.length > 0 ? students : defaultStudents)
     .slice()
-    .sort((a, b) => (b.score || 0) - (a.score || 0));
+    .sort((a, b) => ((b.score ?? 0) - (a.score ?? 0)) || ((b.streak ?? 0) - (a.streak ?? 0)));
 
   // Podium medal colors: 1 = Amber, 2 = Pink, 3 = Mint
   const getPodiumBadge = (rank) => {
@@ -130,7 +130,7 @@ export function StudentLeaderboard({ students = [] }) {
                   display: 'flex',
                   alignItems: 'center',
                   gap: '6px',
-                  background: '#FEF3C7',
+                  background: (st.streak || 0) > 0 ? '#FEF3C7' : '#F1F5F9',
                   border: '1.5px solid #1E293B',
                   borderRadius: '9999px',
                   padding: '4px 10px',
@@ -140,22 +140,32 @@ export function StudentLeaderboard({ students = [] }) {
                     width: '18px',
                     height: '18px',
                     borderRadius: '50%',
-                    background: '#F59E0B',
+                    background: (st.streak || 0) > 0 ? '#F59E0B' : '#94A3B8',
                     border: '1px solid #1E293B',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center'
                   }}>
-                    <Flame size={12} strokeWidth={2.5} color="#FFFFFF" fill="#FFFFFF" />
+                    <Flame
+                      size={12}
+                      strokeWidth={2.5}
+                      color="#FFFFFF"
+                      fill={(st.streak || 0) > 0 ? '#FFFFFF' : 'none'}
+                    />
                   </div>
-                  <span style={{ fontSize: '12px', color: '#1E293B', fontWeight: 800, fontFamily: 'Outfit, sans-serif' }}>
-                    {st.streak}
+                  <span style={{
+                    fontSize: '12px',
+                    color: (st.streak || 0) > 0 ? '#1E293B' : '#64748B',
+                    fontWeight: 800,
+                    fontFamily: 'Outfit, sans-serif'
+                  }}>
+                    {st.streak || 0}
                   </span>
                 </div>
 
                 {/* Score Sticker Badge */}
                 <div style={{
-                  background: '#D1FAE5',
+                  background: st.score !== null && st.score !== undefined ? (st.score >= 80 ? '#D1FAE5' : '#FEF3C7') : '#F1F5F9',
                   padding: '6px 14px',
                   borderRadius: '12px',
                   border: '2px solid #1E293B',
@@ -166,7 +176,13 @@ export function StudentLeaderboard({ students = [] }) {
                   fontFamily: 'Outfit, sans-serif',
                   whiteSpace: 'nowrap'
                 }}>
-                  {st.score} <span style={{ fontSize: '10px', color: '#64748B', fontWeight: 700 }}>/ 100</span>
+                  {st.score !== null && st.score !== undefined ? (
+                    <>
+                      {st.score} <span style={{ fontSize: '10px', color: '#64748B', fontWeight: 700 }}>/ 100</span>
+                    </>
+                  ) : (
+                    <span style={{ color: '#64748B', fontSize: '13px' }}>N/A</span>
+                  )}
                 </div>
               </div>
             </div>

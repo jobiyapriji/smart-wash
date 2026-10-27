@@ -41,11 +41,22 @@ export function computePalmCenter(landmarks) {
 export function computeHandScale(landmarks) {
   if (!landmarks || landmarks.length < 21) return 0.1;
   const p0 = landmarks[0];
+  const p5 = landmarks[5];
   const p9 = landmarks[9];
-  const dx = p9.x - p0.x;
-  const dy = p9.y - p0.y;
-  const dist = Math.sqrt(dx * dx + dy * dy);
-  return Math.max(0.01, dist);
+  const p17 = landmarks[17];
+
+  // Palm length: wrist (0) to middle finger MCP (9)
+  const lenDx = p9.x - p0.x;
+  const lenDy = p9.y - p0.y;
+  const palmLength = Math.sqrt(lenDx * lenDx + lenDy * lenDy);
+
+  // Palm breadth: index MCP (5) to pinky MCP (17)
+  const widDx = p17.x - p5.x;
+  const widDy = p17.y - p5.y;
+  const palmWidth = Math.sqrt(widDx * widDx + widDy * widDy);
+
+  // Invariant composite scale: stable even with bent wrists or curled fingers anywhere in view
+  return Math.max(0.04, palmLength, palmWidth * 1.15);
 }
 
 /**
@@ -64,19 +75,6 @@ export function computeNormalizedDisplacement(p1, p2, handScale) {
   return dist / Math.max(0.01, handScale);
 }
 
-/**
- * Computes hand movement across consecutive frames strictly from landmarks.
- * Guaranteed: If no hands are visible, movement is IDENTICALLY 0.0!
- * Face, body, background, or camera movement will NEVER count as hand motion.
- * 
- * @param {Array<{landmarks: Array, confidence: number}>} currentHands 
- * @param {Array<{landmarks: Array, palmCenter: object, scale: number}>} previousHands 
- * @param {number} movementThreshold Optional override (defaults to HANDWASH_CONFIG.MOVEMENT_THRESHOLD)
- * @returns {{
- *   movement: number,
- *   isMoving: boolean,
- *   handCount: number,
- *   handConfidence: number,
 /**
  * Computes bounding box for a single hand in normalized coordinates [0, 1].
  * 
@@ -117,29 +115,35 @@ export function isMergedHand(landmarks, scale = null) {
   const scaleRatio = box.width / Math.max(0.001, handScale);
 
   return (
-    aspectRatio >= (HANDWASH_CONFIG.MERGED_HAND_ASPECT_RATIO_MIN || 1.15) ||
-    scaleRatio >= (HANDWASH_CONFIG.MERGED_HAND_SCALE_RATIO_MIN || 1.25)
+    aspectRatio >= (HANDWASH_CONFIG.MERGED_HAND_ASPECT_RATIO_MIN || 0.90) ||
+    scaleRatio >= (HANDWASH_CONFIG.MERGED_HAND_SCALE_RATIO_MIN || 1.05)
   );
 }
 
+// Landmark indices for key hand anatomical regions
+const FINGERTIP_INDICES = [4, 8, 12, 16, 20]; // Thumb, Index, Middle, Ring, Pinky tips
+const KNUCKLE_INDICES = [5, 9, 13, 17];       // MCP joints
+
 /**
- * Stateful Hand Movement Tracker
- * Tracks palm center and wrist positions over a sliding 500 ms window.
- * Applies light EMA (alpha = 0.5) smoothing to filter jitter and preserve slow rubbing.
- * Normalized movement = total path length / hand size.
+ * Comprehensive Dynamic Hand Movement Tracker
+ * Tracks all 21 landmarks per hand over a sliding 500ms temporal window.
+ * Dynamically evaluates:
+ * 1. Fingertip velocity (crucial for rotational steps 5 & 6)
+ * 2. Hand joint articulation / internal flexion (wrist-invariant hand rubbing)
+ * 3. All-landmark average trajectory (invariant to screen position)
+ * 4. Inter-hand sliding displacement (for steps 1, 2, 3, 4)
+ * Fully scale-normalized and invariant to screen position, camera tilt, or distance.
  */
 export class HandMovementTracker {
   constructor(options = {}) {
     this.windowMs = options.windowMs ?? HANDWASH_CONFIG.MOVEMENT_WINDOW_MS ?? 500;
-    this.emaAlpha = options.emaAlpha ?? HANDWASH_CONFIG.MOVEMENT_EMA_ALPHA ?? 0.50;
-    this.history = []; // [{ t, center, hands, scale }]
-    this.lastSmoothedCenter = null;
+    this.emaAlpha = options.emaAlpha ?? HANDWASH_CONFIG.MOVEMENT_EMA_ALPHA ?? 0.40;
+    this.history = []; // [{ t, center, hands: [{ landmarks, palm, scale }], scale, handCount }]
     this.lastSmoothedHands = [];
   }
 
   reset() {
     this.history = [];
-    this.lastSmoothedCenter = null;
     this.lastSmoothedHands = [];
   }
 
@@ -158,7 +162,8 @@ export class HandMovementTracker {
       };
     }
 
-    const handsData = currentHands.map((hand) => {
+    // Process and sort hands spatially (leftmost first) to avoid handedness flickering
+    const rawHands = currentHands.map((hand) => {
       const palm = computePalmCenter(hand.landmarks);
       const scale = computeHandScale(hand.landmarks);
       const box = getHandBoundingBox(hand.landmarks);
@@ -171,52 +176,53 @@ export class HandMovementTracker {
         box,
         isMerged: merged
       };
-    });
+    }).sort((a, b) => (a.palmCenter?.x ?? 0) - (b.palmCenter?.x ?? 0));
 
-    const avgConfidence = handsData.reduce((acc, h) => acc + h.confidence, 0) / handsData.length;
-    const avgScale = handsData.reduce((acc, h) => acc + h.scale, 0) / handsData.length;
+    const avgConfidence = rawHands.reduce((acc, h) => acc + h.confidence, 0) / rawHands.length;
+    const avgScale = Math.max(0.04, rawHands.reduce((acc, h) => acc + h.scale, 0) / rawHands.length);
 
-    // Palm center (or midpoint of 2 hands)
-    let rawCenter = { x: 0, y: 0 };
-    if (handsData.length === 1) {
-      rawCenter = { x: handsData[0].palmCenter.x, y: handsData[0].palmCenter.y };
-    } else {
-      rawCenter = {
-        x: (handsData[0].palmCenter.x + handsData[1].palmCenter.x) / 2,
-        y: (handsData[0].palmCenter.y + handsData[1].palmCenter.y) / 2
+    // Apply light EMA smoothing to landmark coordinates to eliminate camera jitter
+    const smoothedHands = rawHands.map((h, hIdx) => {
+      const prevHand = this.lastSmoothedHands[hIdx];
+      if (!prevHand || !prevHand.landmarks || prevHand.landmarks.length < 21) {
+        return {
+          landmarks: h.landmarks.map(pt => ({ x: pt.x, y: pt.y, z: pt.z || 0 })),
+          palmCenter: { ...h.palmCenter },
+          scale: h.scale,
+          isMerged: h.isMerged
+        };
+      }
+
+      const smoothedLms = h.landmarks.map((pt, ptIdx) => {
+        const prevPt = prevHand.landmarks[ptIdx];
+        return {
+          x: this.emaAlpha * pt.x + (1 - this.emaAlpha) * prevPt.x,
+          y: this.emaAlpha * pt.y + (1 - this.emaAlpha) * prevPt.y,
+          z: this.emaAlpha * (pt.z || 0) + (1 - this.emaAlpha) * (prevPt.z || 0)
+        };
+      });
+
+      const smoothedPalm = {
+        x: this.emaAlpha * h.palmCenter.x + (1 - this.emaAlpha) * prevHand.palmCenter.x,
+        y: this.emaAlpha * h.palmCenter.y + (1 - this.emaAlpha) * prevHand.palmCenter.y
       };
-    }
 
-    // Apply EMA 0.5 smoothing
-    let smoothedCenter;
-    if (!this.lastSmoothedCenter) {
-      smoothedCenter = { ...rawCenter };
-    } else {
-      smoothedCenter = {
-        x: this.emaAlpha * rawCenter.x + (1 - this.emaAlpha) * this.lastSmoothedCenter.x,
-        y: this.emaAlpha * rawCenter.y + (1 - this.emaAlpha) * this.lastSmoothedCenter.y
-      };
-    }
-    this.lastSmoothedCenter = smoothedCenter;
-
-    // Smooth individual hand centers
-    const smoothedHands = handsData.map((h, idx) => {
-      const prev = this.lastSmoothedHands[idx];
-      if (!prev) return { ...h.palmCenter };
       return {
-        x: this.emaAlpha * h.palmCenter.x + (1 - this.emaAlpha) * prev.x,
-        y: this.emaAlpha * h.palmCenter.y + (1 - this.emaAlpha) * prev.y
+        landmarks: smoothedLms,
+        palmCenter: smoothedPalm,
+        scale: h.scale,
+        isMerged: h.isMerged
       };
     });
+
     this.lastSmoothedHands = smoothedHands;
 
-    // Add entry to sliding window history
+    // Record in sliding window
     this.history.push({
       t: now,
-      center: smoothedCenter,
       hands: smoothedHands,
       scale: avgScale,
-      handCount: handsData.length
+      handCount: smoothedHands.length
     });
 
     // Prune entries older than sliding window (500ms)
@@ -225,54 +231,109 @@ export class HandMovementTracker {
       this.history.shift();
     }
 
-    // Calculate total path length over the sliding window
-    let centerPath = 0;
-    let hand0Path = 0;
-    let hand1Path = 0;
-    let relativeDistPath = 0;
+    if (this.history.length < 2) {
+      return {
+        movement: 0,
+        isMoving: false,
+        pathLength: 0,
+        handCount: smoothedHands.length,
+        handConfidence: Number(avgConfidence.toFixed(2)),
+        handsData: rawHands
+      };
+    }
+
+    // Cumulative multi-channel dynamic motion across sliding window
+    let cumulativeAllLandmarks = 0;
+    let cumulativeFingertipPath = 0;
+    let cumulativeArticulation = 0;
+    let cumulativeInterHandPath = 0;
+    let cumulativePalmPath = 0;
 
     for (let i = 1; i < this.history.length; i++) {
       const prev = this.history[i - 1];
       const curr = this.history[i];
 
-      const dx = curr.center.x - prev.center.x;
-      const dy = curr.center.y - prev.center.y;
-      centerPath += Math.sqrt(dx * dx + dy * dy);
+      const minHandCount = Math.min(prev.hands.length, curr.hands.length);
+      for (let h = 0; h < minHandCount; h++) {
+        const prevLms = prev.hands[h].landmarks;
+        const currLms = curr.hands[h].landmarks;
+        if (!prevLms || !currLms || prevLms.length < 21 || currLms.length < 21) continue;
 
-      if (curr.hands[0] && prev.hands[0]) {
-        const dx0 = curr.hands[0].x - prev.hands[0].x;
-        const dy0 = curr.hands[0].y - prev.hands[0].y;
-        hand0Path += Math.sqrt(dx0 * dx0 + dy0 * dy0);
-      }
-      if (curr.hands[1] && prev.hands[1]) {
-        const dx1 = curr.hands[1].x - prev.hands[1].x;
-        const dy1 = curr.hands[1].y - prev.hands[1].y;
-        hand1Path += Math.sqrt(dx1 * dx1 + dy1 * dy1);
+        // 1. All-landmark average displacement
+        let handLmsDelta = 0;
+        for (let pt = 0; pt < 21; pt++) {
+          const ddx = currLms[pt].x - prevLms[pt].x;
+          const ddy = currLms[pt].y - prevLms[pt].y;
+          handLmsDelta += Math.sqrt(ddx * ddx + ddy * ddy);
+        }
+        cumulativeAllLandmarks += handLmsDelta / 21;
+
+        // 2. Fingertip path length (maximum active motion)
+        let maxTipDelta = 0;
+        for (const tipIdx of FINGERTIP_INDICES) {
+          const tdx = currLms[tipIdx].x - prevLms[tipIdx].x;
+          const tdy = currLms[tipIdx].y - prevLms[tipIdx].y;
+          const tipDist = Math.sqrt(tdx * tdx + tdy * tdy);
+          if (tipDist > maxTipDelta) maxTipDelta = tipDist;
+        }
+        cumulativeFingertipPath += maxTipDelta;
+
+        // 3. Hand shape articulation / internal joint deformation
+        // Measures change in distance between fingertips and palm center/wrist.
+        // Invariant to position or whole-hand translation!
+        const prevWrist = prevLms[0];
+        const currWrist = currLms[0];
+        let articulationDelta = 0;
+        for (const tipIdx of FINGERTIP_INDICES) {
+          const prevDist = Math.sqrt(
+            Math.pow(prevLms[tipIdx].x - prevWrist.x, 2) + Math.pow(prevLms[tipIdx].y - prevWrist.y, 2)
+          );
+          const currDist = Math.sqrt(
+            Math.pow(currLms[tipIdx].x - currWrist.x, 2) + Math.pow(currLms[tipIdx].y - currWrist.y, 2)
+          );
+          articulationDelta += Math.abs(currDist - prevDist);
+        }
+        cumulativeArticulation += articulationDelta / 5;
+
+        // 4. Palm path length
+        const pdx = curr.hands[h].palmCenter.x - prev.hands[h].palmCenter.x;
+        const pdy = curr.hands[h].palmCenter.y - prev.hands[h].palmCenter.y;
+        cumulativePalmPath += Math.sqrt(pdx * pdx + pdy * pdy);
       }
 
+      // 5. Inter-hand sliding relative motion (when two hands are detected)
       if (curr.hands.length >= 2 && prev.hands.length >= 2) {
-        const prevDist = Math.sqrt(
-          Math.pow(prev.hands[1].x - prev.hands[0].x, 2) +
-          Math.pow(prev.hands[1].y - prev.hands[0].y, 2)
+        const prevInterDist = Math.sqrt(
+          Math.pow(prev.hands[1].palmCenter.x - prev.hands[0].palmCenter.x, 2) +
+          Math.pow(prev.hands[1].palmCenter.y - prev.hands[0].palmCenter.y, 2)
         );
-        const currDist = Math.sqrt(
-          Math.pow(curr.hands[1].x - curr.hands[0].x, 2) +
-          Math.pow(curr.hands[1].y - curr.hands[0].y, 2)
+        const currInterDist = Math.sqrt(
+          Math.pow(curr.hands[1].palmCenter.x - curr.hands[0].palmCenter.x, 2) +
+          Math.pow(curr.hands[1].palmCenter.y - curr.hands[0].palmCenter.y, 2)
         );
-        relativeDistPath += Math.abs(currDist - prevDist);
+        cumulativeInterHandPath += Math.abs(currInterDist - prevInterDist);
       }
     }
 
-    const bestPath = Math.max(centerPath, hand0Path, hand1Path, relativeDistPath);
-    const normalizedMovement = bestPath / Math.max(0.01, avgScale);
+    // Dynamic motion fusion: takes best responsive motion signal normalized by hand size
+    const dynamicPath = Math.max(
+      cumulativeAllLandmarks * 1.4,
+      cumulativeFingertipPath * 1.1,
+      cumulativeArticulation * 2.2,
+      cumulativeInterHandPath * 1.5,
+      cumulativePalmPath
+    );
+
+    const normalizedMovement = dynamicPath / avgScale;
+    const isMoving = normalizedMovement >= movementThreshold;
 
     return {
       movement: Number(normalizedMovement.toFixed(4)),
-      isMoving: normalizedMovement >= movementThreshold,
-      pathLength: Number(bestPath.toFixed(4)),
-      handCount: handsData.length,
+      isMoving,
+      pathLength: Number(dynamicPath.toFixed(4)),
+      handCount: smoothedHands.length,
       handConfidence: Number(avgConfidence.toFixed(2)),
-      handsData
+      handsData: rawHands
     };
   }
 }

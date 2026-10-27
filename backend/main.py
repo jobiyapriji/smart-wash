@@ -25,10 +25,10 @@ except (ImportError, ValueError):
 
 try:
     from .app import inferance
-    from .utils.frame_combiner import combine_frames
-except (ImportError, ValueError):
-    from app import inferance
-    from utils.frame_combiner import combine_frames
+    from .utils.classifier import Classifier
+except Exception as e:
+    logger.error(f"Failed to import modules: {e}")
+    raise
 
 app = FastAPI(
     title="SMART WASH AI Classification Engine",
@@ -38,9 +38,15 @@ app = FastAPI(
 
 # Initialize models
 logger.info("Initializing MediaPipe + LSTM action recognition engine...")
+# Allow optional override of model directory via environment variable for testing/validation
+model_dir = os.getenv("SMART_WASH_MODEL_DIR")
 try:
-    lstm_classifier = LSTMHandwashClassifier()
-    logger.info(f"LSTM model loaded successfully on device: {lstm_classifier.device}")
+    if model_dir:
+        lstm_classifier = LSTMHandwashClassifier(model_dir=model_dir)
+        logger.info(f"LSTM model loaded from overridden dir {model_dir} on device: {lstm_classifier.device}")
+    else:
+        lstm_classifier = LSTMHandwashClassifier()
+        logger.info(f"LSTM model loaded successfully on device: {lstm_classifier.device}")
 except Exception as e:
     logger.warning(f"Failed to load LSTM classifier, falling back to YOLO: {e}")
     lstm_classifier = None

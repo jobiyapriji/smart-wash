@@ -9,7 +9,8 @@ export function FeedbackView({
   score = 0,
   student = null,
   completedSteps = [],
-  onReset = null
+  onReset = null,
+  sessionDurationMs = null
 }) {
   const { lang, t } = useLanguage();
   const [countdown, setCountdown] = useState(8);

@@ -36,23 +36,23 @@ class ErrorBoundary extends React.Component {
           color: 'var(--foreground)'
         }}>
           <div className="sticker-card" style={{ maxWidth: '480px', padding: '36px 32px' }}>
-            <div style={{
-              width: '64px',
-              height: '64px',
-              borderRadius: '50%',
-              background: 'var(--secondary)',
-              border: '2px solid var(--border-dark)',
-              boxShadow: 'var(--shadow-pop)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: '28px',
-              margin: '0 auto 16px'
-            }}>
-              🧼
-            </div>
+            <img
+              src="/assets/smart_wash_logo.png"
+              alt="SMART WASH Logo"
+              style={{
+                width: '64px',
+                height: '64px',
+                borderRadius: '16px',
+                border: '2px solid var(--border-dark)',
+                boxShadow: 'var(--shadow-pop)',
+                objectFit: 'contain',
+                background: '#FFFFFF',
+                display: 'block',
+                margin: '0 auto 16px'
+              }}
+            />
             <h2 style={{ fontSize: '24px', fontWeight: 800, margin: '0 0 8px 0', color: 'var(--foreground)' }}>
-              Kiosk Vision Recovered
+              Wash Station Vision Recovered
             </h2>
             <p style={{ color: 'var(--muted-foreground)', fontSize: '14px', marginBottom: '20px', lineHeight: 1.5 }}>
               The AI engine encountered a temporary video frame glitch. Click below to restart your session smoothly.
@@ -79,7 +79,7 @@ class ErrorBoundary extends React.Component {
               className="btn-candy-primary"
               style={{ width: '100%' }}
             >
-              Restart Kiosk ➔
+              Restart Station ➔
             </button>
           </div>
         </div>
@@ -97,7 +97,7 @@ export default function App() {
         <LoadingProvider>
           <LanguageProvider>
             <BrowserRouter>
-              <Suspense fallback={<LoadingPage message="Loading SMART WASH..." submessage="Preparing views and assets..." />}>
+              <Suspense fallback={<LoadingPage message="Loading SMART WASH..." submessage="Little hands, healthy habits" />}>
                 <Routes>
                   <Route path="/" element={<LandingModeSelect />} />
                   <Route path="/student" element={<StudentKioskApp useMock={false} />} />

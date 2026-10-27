@@ -7,6 +7,7 @@ import { StudentEnrollmentForm } from './components/StudentEnrollmentForm.jsx';
 import { StudentProfile } from './components/StudentProfile.jsx';
 import { getAllStudents } from '../../../shared/services/studentService.js';
 import { getAllSessions, getDailyUnknownVisits } from '../../../shared/services/sessionService.js';
+import { calculateStreak } from '../../../shared/services/scoringService.js';
 import { isMockFirebase } from '../../../shared/firebaseConfig.js';
 import { LoadingPage } from '../../../src/components/LoadingPage.jsx';
 
@@ -30,9 +31,32 @@ import {
 } from 'lucide-react';
 
 function OverviewDashboard({ students, sessions, avgClassScore, unknownVisits = 0 }) {
+  const compliantSessions = sessions.filter(s => (s.complianceScore ?? s.score ?? 0) >= 70);
+  const complianceRate = sessions.length > 0 
+    ? Math.round((compliantSessions.length / sessions.length) * 100)
+    : null;
+
+  // Compute daily averages for Trend Chart
+  const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const dayBuckets = { Mon: [], Tue: [], Wed: [], Thu: [], Fri: [], Sat: [], Sun: [] };
+  sessions.forEach(s => {
+    const d = s.timestamp?.seconds ? new Date(s.timestamp.seconds * 1000) : new Date(s.timestamp || Date.now());
+    const day = dayNames[d.getDay()];
+    if (dayBuckets[day]) {
+      dayBuckets[day].push(s.complianceScore ?? s.score ?? 0);
+    }
+  });
+
+  const hasSessionData = Object.values(dayBuckets).some(arr => arr.length > 0);
+  const trendData = hasSessionData ? ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(day => {
+    const scores = dayBuckets[day];
+    const avgScore = scores.length > 0 ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : 0;
+    return { day, avgScore };
+  }) : undefined;
+
   return (
     <>
-      {/* 4 Overview Stat Cards as Stickers */}
+      {/* 5 Overview Stat Cards as Stickers */}
       <div style={{
         display: 'grid',
         gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
@@ -91,7 +115,7 @@ function OverviewDashboard({ students, sessions, avgClassScore, unknownVisits = 
             alignSelf: 'flex-start',
             fontFamily: 'Outfit, sans-serif'
           }}>
-            +4% from last week
+            {avgClassScore !== 'N/A' ? 'Verified average' : 'No sessions recorded'}
           </div>
         </div>
 
@@ -134,7 +158,7 @@ function OverviewDashboard({ students, sessions, avgClassScore, unknownVisits = 
             </div>
           </div>
           <div style={{ fontSize: '38px', fontWeight: 900, color: '#1E293B', margin: '8px 0 4px 0', fontFamily: 'Outfit, sans-serif' }}>
-            {students.length || 5}
+            {students.length}
           </div>
           <div style={{
             fontSize: '11px',
@@ -147,7 +171,9 @@ function OverviewDashboard({ students, sessions, avgClassScore, unknownVisits = 
             alignSelf: 'flex-start',
             fontFamily: 'Outfit, sans-serif'
           }}>
-            100% face enrolled
+            {students.length > 0 
+              ? `${Math.round((students.filter(s => s.descriptor || s.photoUrl).length / students.length) * 100)}% face enrolled`
+              : '0 enrolled'}
           </div>
         </div>
 
@@ -190,7 +216,7 @@ function OverviewDashboard({ students, sessions, avgClassScore, unknownVisits = 
             </div>
           </div>
           <div style={{ fontSize: '38px', fontWeight: 900, color: '#1E293B', margin: '8px 0 4px 0', fontFamily: 'Outfit, sans-serif' }}>
-            96%
+            {complianceRate !== null ? `${complianceRate}%` : 'N/A'}
           </div>
           <div style={{
             fontSize: '11px',
@@ -203,7 +229,7 @@ function OverviewDashboard({ students, sessions, avgClassScore, unknownVisits = 
             alignSelf: 'flex-start',
             fontFamily: 'Outfit, sans-serif'
           }}>
-            WHO Step compliance
+            {complianceRate !== null ? 'WHO step compliance' : 'No sessions yet'}
           </div>
         </div>
 
@@ -246,7 +272,7 @@ function OverviewDashboard({ students, sessions, avgClassScore, unknownVisits = 
             </div>
           </div>
           <div style={{ fontSize: '38px', fontWeight: 900, color: '#1E293B', margin: '8px 0 4px 0', fontFamily: 'Outfit, sans-serif' }}>
-            {sessions.length + 42}
+            {sessions.length}
           </div>
           <div style={{
             fontSize: '11px',
@@ -259,7 +285,7 @@ function OverviewDashboard({ students, sessions, avgClassScore, unknownVisits = 
             alignSelf: 'flex-start',
             fontFamily: 'Outfit, sans-serif'
           }}>
-            Tracked today
+            All verified sessions
           </div>
         </div>
 
@@ -329,7 +355,7 @@ function OverviewDashboard({ students, sessions, avgClassScore, unknownVisits = 
         gap: '24px',
         marginBottom: '32px'
       }}>
-        <ComplianceTrendChart />
+        <ComplianceTrendChart data={trendData} />
         <StudentLeaderboard students={students} />
       </div>
     </>
@@ -393,15 +419,24 @@ export function TeacherDashboardApp() {
     const visits = await getDailyUnknownVisits();
     setUnknownVisits(visits || 0);
     
-    // Calculate scores for students based on recent sessions
+    // Calculate accurate scores and streak for students based on their actual sessions
     const studentMap = studentList.map(st => {
       const studentSessions = sessionList.filter(s => s.studentId === st.studentId);
-      const latestSession = studentSessions[0];
+      const streak = calculateStreak(studentSessions);
+      const totalSessions = studentSessions.length;
+      let score = null;
+      let grade = 'Not Started';
+      if (totalSessions > 0) {
+        const sum = studentSessions.reduce((acc, s) => acc + (s.complianceScore ?? s.score ?? 0), 0);
+        score = Math.round(sum / totalSessions);
+        grade = score >= 90 ? 'Excellent' : (score >= 75 ? 'Good' : 'Needs Practice');
+      }
       return {
         ...st,
-        score: latestSession ? (latestSession.complianceScore || latestSession.score || 85) : 85,
-        streak: 3,
-        grade: 'Good'
+        score,
+        totalSessions,
+        streak,
+        grade
       };
     });
 
@@ -415,9 +450,12 @@ export function TeacherDashboardApp() {
     }
   }, [isAuthenticated]);
 
-  const avgClassScore = students.length > 0
-    ? Math.round(students.reduce((acc, s) => acc + s.score, 0) / students.length)
-    : 92;
+  const studentsWithScores = students.filter(s => s.score !== null && s.score !== undefined);
+  const avgClassScore = studentsWithScores.length > 0
+    ? Math.round(studentsWithScores.reduce((acc, s) => acc + s.score, 0) / studentsWithScores.length)
+    : (sessions.length > 0
+        ? Math.round(sessions.reduce((acc, s) => acc + (s.complianceScore ?? s.score ?? 0), 0) / sessions.length)
+        : 'N/A');
 
   if (isLoggingIn) {
     return (
@@ -471,26 +509,24 @@ export function TeacherDashboardApp() {
           boxSizing: 'border-box',
           position: 'relative'
         }}>
-          {/* Tilted Logo / Mark */}
-          <div style={{
-            width: '68px',
-            height: '68px',
-            borderRadius: '20px',
-            background: 'var(--accent)',
-            border: '2.5px solid #1E293B',
-            boxShadow: '4px 4px 0 0 #1E293B',
-            transform: 'rotate(-6deg)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: '34px',
-            marginBottom: '20px'
-          }}>
-            🎓
-          </div>
+          {/* Official Project Logo */}
+          <img
+            src="/assets/smart_wash_logo.png"
+            alt="SMART WASH Logo"
+            style={{
+              width: '84px',
+              height: '84px',
+              borderRadius: '20px',
+              border: '2.5px solid #1E293B',
+              boxShadow: '4px 4px 0 0 #1E293B',
+              objectFit: 'contain',
+              background: '#FFFFFF',
+              marginBottom: '20px'
+            }}
+          />
           
           <h2 style={{
-            margin: '0 0 6px 0',
+            margin: '0 0 4px 0',
             fontSize: '28px',
             fontWeight: 800,
             textAlign: 'center',
@@ -499,6 +535,19 @@ export function TeacherDashboardApp() {
           }}>
             Teacher Portal
           </h2>
+
+          <div style={{
+            color: '#8B5CF6',
+            fontSize: '12px',
+            fontWeight: 800,
+            textAlign: 'center',
+            textTransform: 'uppercase',
+            letterSpacing: '0.04em',
+            marginBottom: '10px',
+            fontFamily: 'Outfit, sans-serif'
+          }}>
+            Little hands, healthy habits
+          </div>
 
           <p style={{
             margin: '0 0 24px 0',
@@ -705,24 +754,23 @@ export function TeacherDashboardApp() {
         }}>
           {/* Logo & Portal Title */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-            <div style={{
-              width: '46px',
-              height: '46px',
-              borderRadius: '14px',
-              background: '#8B5CF6',
-              border: '2px solid #1E293B',
-              boxShadow: '3px 3px 0 0 #1E293B',
-              transform: 'rotate(-5deg)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: '24px'
-            }}>
-              🎓
-            </div>
+            <img
+              src="/assets/smart_wash_logo.png"
+              alt="SMART WASH Logo"
+              style={{
+                width: '46px',
+                height: '46px',
+                borderRadius: '14px',
+                border: '2px solid #1E293B',
+                boxShadow: '3px 3px 0 0 #1E293B',
+                objectFit: 'contain',
+                background: '#FFFFFF',
+                flexShrink: 0
+              }}
+            />
             <div>
               <span style={{ fontSize: '11px', fontWeight: 800, color: '#8B5CF6', textTransform: 'uppercase', letterSpacing: '0.04em', fontFamily: 'Outfit, sans-serif' }}>
-                Admin & Hygiene Portal
+                Little hands, healthy habits
               </span>
               <h1 style={{ margin: '2px 0 0 0', fontSize: '20px', fontWeight: 800, color: '#1E293B', fontFamily: 'Outfit, sans-serif' }}>
                 Teacher Handwashing Analytics

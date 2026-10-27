@@ -7,7 +7,7 @@ import { Volume2, Check } from 'lucide-react';
 
 export function LanguageSelectView({ onSelectLanguage }) {
   const { lang, setLang } = useLanguage();
-  const [countdown, setCountdown] = useState(15);
+  const [countdown, setCountdown] = useState(6);
   const selectedRef = useRef(false);
 
   // Voiceover ONLY in the selected/default language in the beginning
@@ -21,7 +21,7 @@ export function LanguageSelectView({ onSelectLanguage }) {
     };
   }, []);
 
-  // 15-second auto-default timer
+  // 6-second auto-default timer
   useEffect(() => {
     const timer = setInterval(() => {
       setCountdown((prev) => {

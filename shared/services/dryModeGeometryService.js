@@ -197,31 +197,31 @@ export function checkStep1PalmToPalm(handsData = [], thresholds = HANDWASH_CONFI
   const dirB = getHandDirectionVector(hB.landmarks);
   const dirDot = (dirA.x * dirB.x) + (dirA.y * dirB.y);
 
-  // Close overlap during active scrubbing: hands overlap and fingers generally point in similar direction
-  if (boxOverlap >= 0.20 && normalizedPalmDist <= (maxPalmDist * 1.6)) {
-    if (dirDot >= 0.10) return true;
-  }
-
   // Fingers pointing opposite ways (e.g. one pointing up, one down) is not palm to palm
   if (dirDot < 0.10) return false;
+
+  // Close overlap during active scrubbing: hands overlap and fingers generally point in similar direction
+  if (boxOverlap >= 0.15 && normalizedPalmDist <= (maxPalmDist * 1.8)) {
+    return true;
+  }
 
   // 1. 3D Palmar Surface Normal opposition (invariant to camera orientation)
   const normA = computePalmNormal(hA.landmarks);
   const normB = computePalmNormal(hB.landmarks);
   const normalDot = dotProduct3D(normA, normB);
   const minOpposition = thresholds?.STEP_1_NORMAL_OPPOSITION ?? -0.15;
-  if (normalDot <= minOpposition && normalizedPalmDist <= (maxPalmDist * 1.5)) {
+  if (normalDot <= minOpposition && normalizedPalmDist <= (maxPalmDist * 1.8)) {
     return true;
   }
 
   // 2. 2D Finger Direction alignment
   const minDot = thresholds?.STEP_1_FINGER_DIR_DOT ?? 0.35;
-  if (dirDot >= minDot && normalizedPalmDist <= (maxPalmDist * 1.5)) {
+  if (dirDot >= minDot && normalizedPalmDist <= (maxPalmDist * 1.8)) {
     return true;
   }
 
-  // 3. Fallback: Bounding box overlap >= 20% within rubbing distance
-  return boxOverlap >= (thresholds?.STEP_1_BOX_OVERLAP ?? 0.20) && normalizedPalmDist <= (maxPalmDist * 1.5);
+  // 3. Fallback: Bounding box overlap >= 15% within rubbing distance
+  return boxOverlap >= (thresholds?.STEP_1_BOX_OVERLAP ?? 0.15) && normalizedPalmDist <= (maxPalmDist * 1.8);
 }
 
 /**
@@ -241,7 +241,8 @@ export function checkStep2PalmOverDorsum(handsData = [], thresholds = HANDWASH_C
   const boxA = getHandBoundingBox(hA.landmarks);
   const boxB = getHandBoundingBox(hB.landmarks);
   const overlap = computeBoxOverlap(boxA, boxB);
-  const minOverlap = thresholds?.STEP_2_BOX_OVERLAP ?? 0.40;
+  const minOverlap = thresholds?.STEP_2_BOX_OVERLAP ?? 0.30; // lowered from 0.40
+  console.debug('[dryModeGeometry] Step2 overlap', { overlap, minOverlap });
   if (overlap < minOverlap) return false;
 
   const palmA = hA.palmCenter || computePalmCenter(hA.landmarks);

@@ -26,7 +26,8 @@ export const INITIAL_KIOSK_STATE = {
   finalScore: 0,
   startTime: null,
   endTime: null,
-  error: null
+  error: null,
+  sessionDurationMs: null
 };
 
 export function kioskReducer(state, action) {
@@ -102,7 +103,8 @@ export function kioskReducer(state, action) {
         ...state,
         currentState: KIOSK_STATES.FEEDBACK,
         finalScore: action.payload.score,
-        completedSteps: action.payload.steps || state.completedSteps
+        completedSteps: action.payload.steps || state.completedSteps,
+        sessionDurationMs: action.payload.sessionDurationMs || null
       };
 
     case 'SELECT_LANGUAGE':

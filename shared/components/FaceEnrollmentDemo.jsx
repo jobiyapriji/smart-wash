@@ -117,7 +117,7 @@ export function FaceEnrollmentDemo() {
               autoPlay 
               playsInline 
               muted 
-              style={{ width: '100%', height: '100%', objectFit: 'cover', display: cameraActive ? 'block' : 'none' }} 
+              style={{ width: '100%', height: '100%', objectFit: 'cover', display: cameraActive ? 'block' : 'none', transform: 'scaleX(-1)' }} 
             />
             {!cameraActive && (
               <div style={{ color: '#94a3b8', textAlign: 'center', padding: '16px' }}>

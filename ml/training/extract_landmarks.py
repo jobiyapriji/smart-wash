@@ -33,27 +33,25 @@ def normalize_single_hand(landmarks_21):
     """
     Normalizes a single hand's 21 landmarks:
     - Origin at wrist (landmark 0).
-    - Scale divided by distance between wrist (0) and middle finger MCP (9).
+    - Robust composite palm scale (length and breadth).
+    - Invariant to hand position, tilt, distance, and camera perspective.
     """
     pts = np.array([[lm.x, lm.y, lm.z] for lm in landmarks_21], dtype=np.float32)
     wrist = pts[0]
     translated = pts - wrist
     
-    middle_mcp = translated[9]
-    scale = np.linalg.norm(middle_mcp)
-    if scale > 1e-5:
-        normalized = translated / scale
-    else:
-        normalized = translated
-        
+    palm_len = float(np.linalg.norm(translated[9]))
+    palm_wid = float(np.linalg.norm(pts[17] - pts[5]))
+    scale = max(palm_len, palm_wid * 1.15, 0.04)
+    normalized = translated / scale
     return normalized.flatten()  # 63 float values
 
 def format_frame_landmarks(hand_landmarks_list, handedness_list):
     """
     Constructs a 126-dimensional canonical vector for 2 hands:
-    - [0:63] = Left Hand
-    - [63:126] = Right Hand
-    Zero-padded if a hand is not detected.
+    - [0:63] = Leftmost Hand
+    - [63:126] = Rightmost Hand (or mirrored second hand)
+    Deterministic spatial ordering prevents slot jitter / handedness flipping.
     """
     feat = np.zeros(FEATURE_DIM, dtype=np.float32)
     if not hand_landmarks_list:
@@ -61,37 +59,23 @@ def format_frame_landmarks(hand_landmarks_list, handedness_list):
 
     num_hands = len(hand_landmarks_list)
     if num_hands == 1:
-        # Determine handedness
-        label = handedness_list[0][0].category_name if handedness_list else "Right"
         hand_norm = normalize_single_hand(hand_landmarks_list[0])
-        if label.lower() == "left":
-            feat[0:HAND_FEATURE_DIM] = hand_norm
-        else:
-            feat[HAND_FEATURE_DIM:FEATURE_DIM] = hand_norm
+        mirrored = hand_norm.copy().reshape(-1, 3)
+        mirrored[:, 0] = -mirrored[:, 0]
+        mirrored_flat = mirrored.flatten()
+        feat[0:HAND_FEATURE_DIM] = hand_norm
+        feat[HAND_FEATURE_DIM:FEATURE_DIM] = mirrored_flat
     else:
-        # 2 or more hands: sort by handedness label, or x-coordinate if both identical
-        h0_label = handedness_list[0][0].category_name.lower() if handedness_list else "left"
-        h1_label = handedness_list[1][0].category_name.lower() if len(handedness_list) > 1 else "right"
-        
         h0_norm = normalize_single_hand(hand_landmarks_list[0])
         h1_norm = normalize_single_hand(hand_landmarks_list[1])
-        
-        if h0_label == "left" and h1_label == "right":
+        x0 = hand_landmarks_list[0][0].x
+        x1 = hand_landmarks_list[1][0].x
+        if x0 <= x1:
             feat[0:HAND_FEATURE_DIM] = h0_norm
             feat[HAND_FEATURE_DIM:FEATURE_DIM] = h1_norm
-        elif h0_label == "right" and h1_label == "left":
+        else:
             feat[0:HAND_FEATURE_DIM] = h1_norm
             feat[HAND_FEATURE_DIM:FEATURE_DIM] = h0_norm
-        else:
-            # Both detected as same label: sort by wrist x coordinate
-            x0 = hand_landmarks_list[0][0].x
-            x1 = hand_landmarks_list[1][0].x
-            if x0 < x1:
-                feat[0:HAND_FEATURE_DIM] = h0_norm
-                feat[HAND_FEATURE_DIM:FEATURE_DIM] = h1_norm
-            else:
-                feat[0:HAND_FEATURE_DIM] = h1_norm
-                feat[HAND_FEATURE_DIM:FEATURE_DIM] = h0_norm
                 
     return feat
 
@@ -403,9 +387,12 @@ def build_dataset(annotations_path, video_dir=None, model_asset_path=None, seq_l
     return X, y, v_src, p_src, annot_data
 
 def main():
-    parser = argparse.ArgumentParser(description="Extract hand landmarks from WHO videos for LSTM training.")
-    parser.add_argument("--annotations", type=str, default="annotations.json", help="Path to annotations.json")
-    parser.add_argument("--video-dir", type=str, default=None, help="Directory containing video files")
+    parser = argparse.ArgumentParser(description="Extract hand landmarks from Kaggle WHO Handwash dataset for LSTM training.")
+    parser.add_argument("--annotations", type=str, default="annotations_kaggle.json", help="Path to annotations_kaggle.json")
+    # Discover Kaggle dataset in local kagglehub cache if available
+    kaggle_cached = os.path.expanduser("~/.cache/kagglehub/datasets/realtimear/hand-wash-dataset/versions/4/HandWashDataset/HandWashDataset")
+    default_vdir = kaggle_cached if os.path.isdir(kaggle_cached) else None
+    parser.add_argument("--video-dir", type=str, default=default_vdir, help="Directory containing Kaggle video files")
     parser.add_argument("--output", type=str, default="dataset_landmarks.npz", help="Output .npz dataset path")
     parser.add_argument("--seq-len", type=int, default=30, help="Sequence length in frames")
     parser.add_argument("--stride", type=int, default=2, help="Sliding window stride in frames")

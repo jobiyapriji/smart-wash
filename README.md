@@ -1,6 +1,10 @@
-# SMART WASH — Monorepo
+<p align="center">
+  <img src="public/assets/smart_wash_logo.png" width="180" alt="SMART WASH Logo" />
+</p>
 
-Autonomous AI Handwashing Compliance & Identification Kiosk.
+# SMART WASH — Little hands, healthy habits
+
+Autonomous AI Handwashing Compliance & Identification Platform. Little hands, healthy habits.
 
 > 📖 **Operator & User Guide**: For complete step-by-step instructions, camera positioning, and WHO handwashing techniques, see [HOW_TO_USE.md](HOW_TO_USE.md).
 

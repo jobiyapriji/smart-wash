@@ -7,7 +7,7 @@ import { Button } from './ui/Button.jsx';
 import { Pill } from './ui/Pill.jsx';
 import { IconBadge } from './ui/IconBadge.jsx';
 import { Squiggle } from './ui/Squiggle.jsx';
-import { Sparkles, ShieldCheck, Smartphone, ScanFace, Timer, Mic, BarChart3, Users, Award, Lock, RefreshCw } from 'lucide-react';
+import { Sparkles, ShieldCheck, Smartphone, ScanFace, Timer, Mic, BarChart3, Users, Award, Lock } from 'lucide-react';
 
 export function LandingModeSelect() {
   const navigate = useNavigate();
@@ -25,7 +25,7 @@ export function LandingModeSelect() {
   const handleLaunchStudent = () => {
     setTransitionLoading({
       active: true,
-      message: 'Launching Student Kiosk...',
+      message: 'Launching Wash Station...',
       submessage: 'Connecting to sink vision stream & initializing 6 WHO step guide...'
     });
     setTimeout(() => {
@@ -86,52 +86,32 @@ export function LandingModeSelect() {
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-          {/* Tilted Logo Mark in Rounded Square with Hard Shadow */}
-          <div
+          {/* Official Project Logo */}
+          <img
+            src="/assets/smart_wash_logo.png"
+            alt="SMART WASH Logo"
             style={{
-              width: '46px',
-              height: '46px',
+              width: '48px',
+              height: '48px',
               borderRadius: 'var(--radius-md)',
-              backgroundColor: 'var(--accent)',
               border: '2px solid var(--border-dark)',
               boxShadow: '3px 3px 0px 0px var(--border-dark)',
-              transform: 'rotate(-4deg)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: '24px',
+              objectFit: 'contain',
+              background: '#FFFFFF',
               flexShrink: 0
             }}
-          >
-            🧼
-          </div>
+          />
           <div>
             <div style={{ fontSize: '20px', fontWeight: 800, letterSpacing: '-0.02em', color: 'var(--foreground)' }}>
               SMART WASH
             </div>
             <div style={{ fontSize: '12px', color: 'var(--muted-foreground)', fontWeight: 600 }}>
-              Autonomous AI Hygiene Kiosk & Analytics
+              Little hands, healthy habits
             </div>
           </div>
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
-          {/* Re-trigger Loading Screen Button */}
-          <button
-            onClick={() => setIsInitialLoading(true)}
-            title="Preview Hand Rubbing Loading Animation"
-            className="btn-candy-secondary"
-            style={{
-              minHeight: '38px',
-              padding: '6px 14px',
-              fontSize: '12px',
-              borderRadius: 'var(--radius-full)'
-            }}
-          >
-            <RefreshCw size={14} strokeWidth={2.5} />
-            <span>Preview Loader</span>
-          </button>
-
           {/* AI Ready Pill */}
           <Pill color="mint" icon={<ShieldCheck size={16} strokeWidth={2.5} />}>
             AI Engine Ready
@@ -143,7 +123,7 @@ export function LandingModeSelect() {
       <div style={{ textAlign: 'center', maxWidth: '740px', marginBottom: '44px', zIndex: 1 }}>
         <div style={{ marginBottom: '14px' }}>
           <Pill color="violet" size="sm">
-            Single Station · Dual Mode Portal
+            Little hands, healthy habits
           </Pill>
         </div>
 
@@ -217,7 +197,7 @@ export function LandingModeSelect() {
             </div>
 
             <h2 style={{ fontSize: '26px', fontWeight: 800, margin: '0 0 10px 0', color: 'var(--foreground)' }}>
-              Student Kiosk
+              Wash Station
             </h2>
             <p style={{ color: 'var(--muted-foreground)', fontSize: '15px', lineHeight: 1.6, margin: '0 0 24px 0' }}>
               Zero-touch interactive mirror designed for touchscreens or mobile phones mounted at the sink. Autonomously recognizes students, guides 6 WHO steps, and verifies active hand movement.
@@ -249,7 +229,7 @@ export function LandingModeSelect() {
             }}
             style={{ width: '100%' }}
           >
-            Launch Student Kiosk ➔
+            Launch Wash Station ➔
           </Button>
         </Card>
 

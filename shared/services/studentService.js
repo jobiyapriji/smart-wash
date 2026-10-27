@@ -41,10 +41,12 @@ const SEED_STUDENTS = [
 // In-memory store initialized with seed students and synced to localStorage
 const loadMockStudents = () => {
   try {
-    const stored = localStorage.getItem('smartwash_mock_students');
-    if (stored) {
-      const parsed = JSON.parse(stored);
-      return new Map(parsed);
+    if (typeof localStorage !== 'undefined') {
+      const stored = localStorage.getItem('smartwash_mock_students');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        return new Map(parsed);
+      }
     }
   } catch (e) {
     console.warn('Could not load mock students from localStorage', e);
@@ -56,7 +58,9 @@ const mockStudentsStore = loadMockStudents();
 
 const saveMockStudents = () => {
   try {
-    localStorage.setItem('smartwash_mock_students', JSON.stringify(Array.from(mockStudentsStore.entries())));
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem('smartwash_mock_students', JSON.stringify(Array.from(mockStudentsStore.entries())));
+    }
   } catch (e) {
     console.warn('Could not save mock students to localStorage', e);
   }

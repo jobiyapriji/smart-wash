@@ -8,9 +8,9 @@
 
 export const en = {
   // App & States
-  kiosk_title: 'SMART WASH KIOSK 🫧',
+  kiosk_title: 'WASH STATION 🫧',
   state_label: 'Status:',
-  exit_kiosk: '← Exit Kiosk',
+  exit_kiosk: '← Exit Station',
   change_language: 'Language',
   
   // State Names
@@ -122,7 +122,7 @@ export const en = {
 
 export const ml = {
   // App & States
-  kiosk_title: 'സ്മാർട്ട് വാഷ് കിയോസ്ക് 🫧',
+  kiosk_title: 'വാഷ് സ്റ്റേഷൻ 🫧',
   state_label: 'നില:',
   exit_kiosk: '← പുറത്തുകടക്കുക',
   change_language: 'ഭാഷ മാറ്റുക',
@@ -236,7 +236,7 @@ export const ml = {
 
 export const hi = {
   // App & States
-  kiosk_title: 'स्मार्ट वॉश कियोस्क 🫧',
+  kiosk_title: 'वॉश स्टेशन 🫧',
   state_label: 'स्थिति:',
   exit_kiosk: '← बाहर निकलें',
   change_language: 'भाषा बदलें',

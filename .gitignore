@@ -8,3 +8,7 @@ __pycache__/
 *.py[cod]
 runs/
 *.npz
+.venv/
+.venv*/
+backend/models/lstm/candidate/
+backend/models/lstm/*backup*

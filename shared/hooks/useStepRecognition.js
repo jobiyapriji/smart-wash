@@ -13,6 +13,12 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { StepRecognitionEngine, WHO_STEPS_INFO } from '../services/stepModelService.js';
 import { HANDWASH_CONFIG } from '../config/handwashConfig.js';
+import {
+  computePalmCenter,
+  computeHandScale,
+  getHandBoundingBox,
+  isMergedHand
+} from '../services/handLandmarkService.js';
 
 // Helper to resolve the correct WebSocket endpoint dynamically across dev, Docker, and LAN kiosk setups
 export function getWebSocketEndpoint() {
@@ -102,11 +108,18 @@ export function useStepRecognition({
   const canvasRef = useRef(null);
   const ctxRef = useRef(null);
   const handStateRef = useRef(handState);
+  const prevDebugRef = useRef(null); // throttled debug snapshot
+  const lastWsDiagTimeRef = useRef(0);
+  const lastDiagABTimeRef = useRef(0);
+  const lastDiagETimeRef = useRef(0);
+  const lastDiagFTimeRef = useRef(0);
 
   const lastStepTimeRef = useRef(performance.now());
   const onStepCompletedRef = useRef(onStepCompleted);
   const onFinishWashingRef = useRef(onFinishWashing);
   const activeStepRef = useRef(activeStep);
+  // Guard to ensure finish callback fires only once per session
+  const finishedRef = useRef(false);
 
   useEffect(() => {
     handStateRef.current = handState;
@@ -131,7 +144,7 @@ export function useStepRecognition({
   useEffect(() => {
     engineRef.current = new StepRecognitionEngine({
       mode,
-      enableGeometryFallback: mode === 'dry' || Boolean(HANDWASH_CONFIG.ENABLE_ADAPTIVE_FUSION),
+      enableGeometryFallback: mode === 'dry' || mode === 'adaptive' || mode === 'ensemble' || Boolean(HANDWASH_CONFIG.ENABLE_ADAPTIVE_FUSION),
       confidenceThreshold: confidenceThreshold ?? (mode === 'dry' ? HANDWASH_CONFIG.DRY_CONFIDENCE_THRESHOLD : HANDWASH_CONFIG.CONFIDENCE_THRESHOLD),
       consecutiveFramesRequired: mode === 'dry' ? HANDWASH_CONFIG.DRY_DEBOUNCE_FRAMES : HANDWASH_CONFIG.DEBOUNCE_FRAMES,
       movementThreshold: HANDWASH_CONFIG.MOVEMENT_THRESHOLD
@@ -152,16 +165,33 @@ export function useStepRecognition({
 
     const connectWebSocket = () => {
       const endpoint = getWebSocketEndpoint();
+      console.log('[DIAG:WS] Connecting to backend at:', endpoint);
       const ws = new WebSocket(endpoint);
 
       ws.onopen = () => {
         setIsProcessing(true);
+        console.log('[DIAG:WS] Successfully connected to:', endpoint, 'readyState:', ws.readyState);
         setTelemetry(prev => ({ ...prev, serverStatus: 'CONNECTED' }));
       };
 
       ws.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data);
+          const now = performance.now();
+          if (now - (lastDiagETimeRef.current || 0) > 1500) {
+            lastDiagETimeRef.current = now;
+            console.log('[BOUNDARY:E:FrontendReceive]', {
+              hasPrediction: Boolean(data.prediction),
+              rawPrediction: data.prediction,
+              rawClass: data.prediction?.class,
+              confidence: data.prediction?.confidence,
+              hand_count: data.prediction?.hand_count,
+              status: data.prediction?.status,
+              is_moving: data.prediction?.is_moving,
+              movement: data.prediction?.movement,
+              timestamp: data.timestamp
+            });
+          }
           if (data.prediction && engineRef.current) {
             handlePrediction(data.prediction, data.timestamp);
           }
@@ -170,11 +200,13 @@ export function useStepRecognition({
         }
       };
 
-      ws.onerror = () => {
+      ws.onerror = (err) => {
+        console.warn('[DIAG:WS] WebSocket connection error on:', endpoint);
         setTelemetry(prev => ({ ...prev, serverStatus: 'ERROR' }));
       };
 
       ws.onclose = () => {
+        console.log('[DIAG:WS] WebSocket connection closed, reconnecting in 2s...');
         setIsProcessing(false);
         setTelemetry(prev => ({ ...prev, serverStatus: 'RECONNECTING' }));
         if (enabled) {
@@ -196,9 +228,9 @@ export function useStepRecognition({
   }, [enabled]);
 
   // Main evaluation handler on each model prediction
-  const handlePrediction = useCallback((prediction, timestamp) => {
+  const handlePrediction = useCallback((prediction) => {
     if (!engineRef.current) return;
-    const now = timestamp || performance.now();
+    const now = performance.now();
 
     // Calculate real FPS
     const frameTimes = fpsFramesRef.current;
@@ -212,20 +244,49 @@ export function useStepRecognition({
     // Retrieve current hand landmark data
     const hands = handStateRef.current || {};
     const backendHandCount = prediction.hand_count ?? 0;
-    const backendHandConfidence = prediction.hand_confidence ?? 0;
+    const backendHandConfidence = (backendHandCount >= 1 && (prediction.hand_confidence === undefined || prediction.hand_confidence === null || prediction.hand_confidence === 0))
+      ? 0.85
+      : (prediction.hand_confidence ?? 0);
 
     // Multi-modal ensemble: fuse local MediaPipe with backend MediaPipe Tasks
     const handCount = Math.max(hands.handCount ?? 0, backendHandCount);
     const handConfidence = Math.max(hands.handConfidence ?? 0, backendHandConfidence);
 
-    // Hands are missing only if NEITHER frontend nor backend detected hands
-    const handsMissingState = handCount === 0 || (hands.handsMissing && backendHandCount === 0);
+    // Hands are missing only if BOTH frontend and backend report zero hands
+    const handsMissingState = handCount === 0 && backendHandCount === 0;
+
+    // Landmark fusion: use local MediaPipe handsData if present; otherwise reconstruct from backend 3D landmarks
+    let fusedHandsData = (hands.handsData && hands.handsData.length > 0) ? hands.handsData : [];
+    if (fusedHandsData.length === 0 && Array.isArray(prediction.landmarks) && prediction.landmarks.length > 0) {
+      fusedHandsData = prediction.landmarks.map((lms) => {
+        const palm = computePalmCenter(lms);
+        const scale = computeHandScale(lms);
+        const box = getHandBoundingBox(lms);
+        const merged = isMergedHand(lms, scale);
+        return {
+          landmarks: lms,
+          confidence: backendHandConfidence,
+          palmCenter: palm,
+          scale,
+          box,
+          isMerged: merged
+        };
+      });
+    }
+
+    // Dynamic Movement Fusion: combine frontend MediaPipe articulation with backend temporal motion
+    const backendMovement = prediction.movement ?? 0;
+    const backendIsMoving = Boolean(prediction.is_moving);
 
     // Movement: if student is actively washing, model predicts an active step
     const isModelPredictingAction = prediction.class && prediction.class !== 'background' && (prediction.confidence || 0) >= 0.30;
-    const fallbackMovement = (isModelPredictingAction && handCount >= 1) ? 0.08 : 0;
-    const handMovement = Math.max(hands.handMovement ?? 0, fallbackMovement);
-    const isMoving = hands.isHandsMoving || (handMovement >= (HANDWASH_CONFIG.MOVEMENT_THRESHOLD || 0.05));
+    const fallbackMovement = (isModelPredictingAction && handCount >= 1) ? 0.05 : 0;
+    const handMovement = Math.max(hands.handMovement ?? 0, backendMovement, fallbackMovement);
+    const isMoving = Boolean(
+      hands.isHandsMoving ||
+      backendIsMoving ||
+      (handMovement >= (HANDWASH_CONFIG.MOVEMENT_THRESHOLD || 0.02))
+    );
 
     setIsHandsMoving(isMoving);
     setHandsMissing(handsMissingState);
@@ -238,8 +299,8 @@ export function useStepRecognition({
       handConfidence,
       handMovement,
       isHandsMoving: isMoving,
-      handsData: hands.handsData || [],
-      isMerged: Boolean(prediction.is_merged || (backendHandCount >= 1 && (hands.handsData || []).some(h => h.isMerged)))
+      handsData: fusedHandsData,
+      isMerged: Boolean(prediction.is_merged || fusedHandsData.some(h => h.isMerged))
     }, now);
 
     const currentTarget = activeStepRef.current;
@@ -271,17 +332,77 @@ export function useStepRecognition({
       serverStatus: 'CONNECTED'
     });
 
+    // Throttled diagnostic logging – every 1.5s or on key transition
+    const debugSnapshot = {
+      handCount,
+      backendHandCount: prediction.hand_count,
+      rawClass: prediction.class,
+      rawConfidence: prediction.confidence,
+      geometryPassed: result.geometryRulePassed,
+      handsMissing: result.handsMissing,
+      statusReason: result.statusReason,
+      activeTimeMs: result.activeTimeMs,
+      elapsedSeconds: result.elapsedSeconds,
+      completedSteps: result.completedSteps,
+      currentStep: activeStepRef.current
+    };
+    const snapshotString = JSON.stringify(debugSnapshot);
+    if (prevDebugRef.current !== snapshotString || (now - (lastWsDiagTimeRef.current || 0) > 1500)) {
+      lastWsDiagTimeRef.current = now;
+      const currentTargetStep = activeStepRef.current;
+      const mappedStep = engineRef.current ? engineRef.current.getYoloClassStep(prediction.class) : -1;
+      const stepMatch = mappedStep === currentTargetStep;
+      const confThreshold = engineRef.current ? engineRef.current.confidenceThreshold : 0.60;
+      const confidenceCheck = (prediction.confidence || 0) >= confThreshold;
+
+      console.log('[BOUNDARY:F:RecognitionState]', {
+        currentTarget: currentTargetStep,
+        rawClass: prediction.class,
+        mappedStep,
+        stepMatch,
+        confidence: Number((prediction.confidence || 0).toFixed(2)),
+        threshold: confThreshold,
+        confidenceCheck,
+        fusedHandCount: handCount,
+        handsPresent: result.ruleConditions?.handsPresent,
+        movementCheck: result.ruleConditions?.movementCheck,
+        stepSatisfied: (stepMatch && confidenceCheck) || Boolean(result.geometryRulePassed),
+        debounceStreak: result.debounceStreak,
+        activeTimeMs: Math.round(result.activeTimeMs || 0),
+        elapsedSeconds: result.elapsedSeconds,
+        failingReason: result.failingReason,
+        statusReason: result.statusReason
+      });
+
+      console.log('[DIAG:PipelineTelemetry]', {
+        frontendHands: hands.handCount ?? 0,
+        backendHands: backendHandCount,
+        fusedHandCount: handCount,
+        fusedHandConfidence: Number(handConfidence.toFixed(2)),
+        backendClass: prediction.class,
+        backendConf: Number((prediction.confidence || 0).toFixed(2)),
+        statusReason: result.statusReason,
+        activeTimeMs: Math.round(result.activeTimeMs || 0),
+        elapsedSeconds: result.elapsedSeconds,
+        ruleConditions: result.ruleConditions
+      });
+      prevDebugRef.current = snapshotString;
+    }
+
     setActiveTimeMs(result.activeTimeMs || 0);
-    setElapsedSeconds(result.elapsedSeconds !== undefined ? result.elapsedSeconds.toFixed(1) : ((result.activeTimeMs || 0) / 1000).toFixed(1));
-    setStatusReason(result.statusReason || 'No hands');
+    setElapsedSeconds(result.elapsedSeconds !== undefined ? (typeof result.elapsedSeconds === 'number' ? result.elapsedSeconds.toFixed(1) : String(result.elapsedSeconds)) : ((result.activeTimeMs || 0) / 1000).toFixed(1));
+    setStatusReason(result.statusReason || (result.handsMissing ? 'No hands' : 'Scrubbing active'));
     setGraceState(result.graceState || 'IDLE');
+    setHandsMissing(result.handsMissing !== undefined ? Boolean(result.handsMissing) : handsMissingState);
 
     // Check if step advanced or sequence finished
     const isStepAdvanced = result.rawStep > currentTarget || (result.isFinished && currentTarget === 6);
     if (isStepAdvanced) {
       const duration = now - lastStepTimeRef.current;
       lastStepTimeRef.current = now;
-      if (onStepCompletedRef.current) {
+      if (duration < 500) {
+        console.debug('[SMART‑WASH] Ignored rapid step completion (<500ms)');
+      } else if (onStepCompletedRef.current) {
         onStepCompletedRef.current({
           stepNumber: currentTarget,
           durationMs: duration,
@@ -300,7 +421,9 @@ export function useStepRecognition({
     if (result.missedSteps) setMissedSteps(result.missedSteps);
 
     // Check if all 6 steps are complete
-    if (result.isFinished) {
+    if (result.isFinished && !finishedRef.current) {
+      finishedRef.current = true;
+      console.log('[SMART‑WASH] Detected finish. Completed steps:', result.completedSteps);
       if (onFinishWashingRef.current) {
         onFinishWashingRef.current(result.completedSteps);
       }
@@ -326,6 +449,26 @@ export function useStepRecognition({
     ctxRef.current.drawImage(video, sx, sy, cropSize, cropSize, 0, 0, 320, 320);
 
     const isWsConnected = wsRef.current && wsRef.current.readyState === WebSocket.OPEN;
+    const now = performance.now();
+    if (now - (lastDiagABTimeRef.current || 0) > 1500) {
+      lastDiagABTimeRef.current = now;
+      const hands = handStateRef.current || {};
+      console.log('[BOUNDARY:A:FrontendLandmarks]', {
+        frontendHandCount: hands.handCount ?? 0,
+        hasHandsData: Boolean(hands.handsData && hands.handsData.length > 0),
+        landmarksPerHand: (hands.handsData || []).map(h => h.landmarks?.length || 0),
+        isHandsMoving: hands.isHandsMoving ?? false,
+        handMovement: hands.handMovement ?? 0,
+        handsMissing: hands.handsMissing ?? false
+      });
+      console.log('[BOUNDARY:B:WSTransmit]', {
+        wsConnected: isWsConnected,
+        readyState: wsRef.current ? wsRef.current.readyState : 'NO_WS',
+        videoSize: `${vw}x${vh}`,
+        cropSize: `${cropSize}x${cropSize}`
+      });
+    }
+
     if (isWsConnected) {
       if (typeof canvasRef.current.toBlob === 'function') {
         canvasRef.current.toBlob((blob) => {
@@ -337,9 +480,6 @@ export function useStepRecognition({
         const dataUrl = canvasRef.current.toDataURL('image/jpeg', 0.6);
         wsRef.current.send(dataUrl);
       }
-    } else {
-      // If server is not connected, feed idle background to engine so nothing runs
-      handlePrediction({ class: 'background', confidence: 1.0 });
     }
   }, [videoRef, handlePrediction]);
 
@@ -372,8 +512,13 @@ export function useStepRecognition({
     setStepName(WHO_STEPS_INFO[result.smoothedStep]?.name || 'Unknown');
     setProgress(result.progressPercent);
     if (result.completedSteps) setCompletedSteps(result.completedSteps);
-    if (result.isFinished && onFinishWashingRef.current) {
-      onFinishWashingRef.current(result.completedSteps);
+    // Guarded finish callback – fire once per session
+    if (result.isFinished && !finishedRef.current) {
+      finishedRef.current = true;
+      console.log('[SMART‑WASH] Detected finish. Completed steps:', result.completedSteps);
+      if (onFinishWashingRef.current) {
+        onFinishWashingRef.current(result.completedSteps);
+      }
     }
   }, []);
 
@@ -387,9 +532,12 @@ export function useStepRecognition({
   }, []);
 
   const resetTracker = useCallback(() => {
+    console.log('[DIAG:TrackerReset] resetTracker() executed: clearing engine, timers, predictions, and finish guard');
+    // Reset engine internal state (prediction buffer, timers, counters)
     if (engineRef.current) {
       engineRef.current.reset();
     }
+    // Reset React state mirrors
     setActiveStep(1);
     setProgress(0);
     setActiveTimeMs(0);
@@ -398,6 +546,40 @@ export function useStepRecognition({
     setGraceState('IDLE');
     setCompletedSteps([]);
     setMissedSteps([]);
+    setHandsMissing(false);
+    // Reset finish guard for a fresh session
+    finishedRef.current = false;
+    // Clear telemetry (preserve mode)
+    setTelemetry(prev => ({
+      ...prev,
+      camActive: false,
+      handCount: 0,
+      handConfidence: 0,
+      handMovement: 0,
+      handsMissing: false,
+      rawPrediction: 'None',
+      rawConfidence: 0,
+      activeTimeMs: 0,
+      elapsedSeconds: '0.0',
+      geometryRulePassed: false,
+      geometryRuleName: null,
+      ruleConditions: {
+        handsPresent: false,
+        stepMatch: false,
+        confidenceCheck: false,
+        movementCheck: false,
+        debounceCheck: false,
+        geometryRulePassed: false,
+        geometryRuleName: null
+      },
+      statusReason: 'No hands',
+      graceState: 'IDLE',
+      debounceCount: 0,
+      failingReason: 'WAITING_FOR_CAMERA',
+      fps: 0
+    }));
+    // Reset timing reference used for step duration calculations
+    lastStepTimeRef.current = performance.now();
   }, []);
 
   const copyDebugLog = useCallback(() => {
