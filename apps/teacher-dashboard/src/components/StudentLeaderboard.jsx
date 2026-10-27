@@ -7,15 +7,7 @@ import { Trophy, Flame, Medal } from 'lucide-react';
  * and flame streak circles in the Playful Geometric style.
  */
 export function StudentLeaderboard({ students = [] }) {
-  const defaultStudents = [
-    { studentId: 'STU_101', name: 'Jesty K.', score: 98, streak: 7, grade: 'Excellent' },
-    { studentId: 'STU_102', name: 'Jobiya P.', score: 95, streak: 5, grade: 'Excellent' },
-    { studentId: 'STU_103', name: 'Joel T.', score: 91, streak: 4, grade: 'Excellent' },
-    { studentId: 'STU_104', name: 'Rahul M.', score: 88, streak: 3, grade: 'Good' },
-    { studentId: 'STU_105', name: 'Ananya S.', score: 82, streak: 2, grade: 'Good' }
-  ];
-
-  const leaderboardData = (students.length > 0 ? students : defaultStudents)
+  const leaderboardData = students
     .slice()
     .sort((a, b) => ((b.score ?? 0) - (a.score ?? 0)) || ((b.streak ?? 0) - (a.streak ?? 0)));
 
@@ -64,7 +56,8 @@ export function StudentLeaderboard({ students = [] }) {
         </div>
       </div>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+      {leaderboardData.length > 0 ? (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
         {leaderboardData.map((st, index) => {
           const rank = index + 1;
           const badge = getPodiumBadge(rank);
@@ -189,6 +182,21 @@ export function StudentLeaderboard({ students = [] }) {
           );
         })}
       </div>
+      ) : (
+        <div style={{
+          padding: '36px 16px',
+          textAlign: 'center',
+          color: '#64748B',
+          fontSize: '13px',
+          fontWeight: 600,
+          background: '#F8FAFC',
+          borderRadius: '16px',
+          border: '1.5px dashed #CBD5E1',
+          fontFamily: 'Outfit, sans-serif'
+        }}>
+          No student activity recorded yet.
+        </div>
+      )}
     </div>
   );
 }

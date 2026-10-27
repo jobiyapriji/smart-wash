@@ -7,51 +7,38 @@
  */
 
 import { db, storage, isMockFirebase } from '../firebaseConfig.js';
-import { collection, doc, setDoc, getDoc, getDocs, updateDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, doc, setDoc, getDoc, getDocs, updateDoc, deleteDoc, serverTimestamp } from 'firebase/firestore';
 import { ref, uploadString, getDownloadURL } from 'firebase/storage';
 
-// Sample seed students with synthetic 128-d descriptors for testing/demonstration
-const SEED_STUDENTS = [
-  {
-    studentId: 'STU_101',
-    name: 'Alex River',
-    classId: 'Grade 5-A',
-    photoUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150',
-    // Normalized synthetic 128-d face vector pattern A
-    descriptor: Array.from({ length: 128 }, (_, i) => Math.sin(i * 0.1) * 0.5 + 0.5)
-  },
-  {
-    studentId: 'STU_102',
-    name: 'Jordan Taylor',
-    classId: 'Grade 5-A',
-    photoUrl: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=150',
-    // Normalized synthetic 128-d face vector pattern B
-    descriptor: Array.from({ length: 128 }, (_, i) => Math.cos(i * 0.15) * 0.5 + 0.5)
-  },
-  {
-    studentId: 'STU_103',
-    name: 'Sam Chen',
-    classId: 'Grade 5-B',
-    photoUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150',
-    // Normalized synthetic 128-d face vector pattern C
-    descriptor: Array.from({ length: 128 }, (_, i) => ((i * 37) % 100) / 100)
-  }
-];
+// Known legacy demo student IDs to purge if previously cached in localStorage
+const DEMO_STUDENT_IDS = new Set(['STU_101', 'STU_102', 'STU_103']);
 
-// In-memory store initialized with seed students and synced to localStorage
+// In-memory store initialized from localStorage (clean by default, without hardcoded demo students)
 const loadMockStudents = () => {
   try {
     if (typeof localStorage !== 'undefined') {
       const stored = localStorage.getItem('smartwash_mock_students');
       if (stored) {
         const parsed = JSON.parse(stored);
-        return new Map(parsed);
+        const map = new Map(parsed);
+        // Automatically purge legacy hardcoded demo students (Alex River, Jordan Taylor, Sam Chen)
+        let purged = false;
+        for (const [id, s] of map.entries()) {
+          if (DEMO_STUDENT_IDS.has(id) && (s.name === 'Alex River' || s.name === 'Jordan Taylor' || s.name === 'Sam Chen')) {
+            map.delete(id);
+            purged = true;
+          }
+        }
+        if (purged) {
+          localStorage.setItem('smartwash_mock_students', JSON.stringify(Array.from(map.entries())));
+        }
+        return map;
       }
     }
   } catch (e) {
     console.warn('Could not load mock students from localStorage', e);
   }
-  return new Map(SEED_STUDENTS.map(s => [s.studentId, s]));
+  return new Map();
 };
 
 const mockStudentsStore = loadMockStudents();
@@ -238,11 +225,10 @@ export async function getAllStudents() {
   if (db && !isMockFirebase) {
     try {
       const snapshot = await getDocs(collection(db, 'students'));
-      if (!snapshot.empty) {
-        return snapshot.docs.map(doc => ({ studentId: doc.id, ...doc.data() }));
-      }
+      // Return actual students stored in Firestore (empty array if no students enrolled)
+      return snapshot.docs.map(doc => ({ studentId: doc.id, ...doc.data() }));
     } catch (err) {
-      console.warn('[studentService] Firestore getDocs failed:', err.message);
+      console.warn('[studentService] Firestore getDocs failed, checking local store:', err.message);
     }
   }
 
@@ -268,4 +254,46 @@ export async function getStudentById(studentId) {
   }
 
   return mockStudentsStore.get(studentId) || null;
+}
+
+/**
+ * Deletes a student record by studentId from the database (Firestore or local mock store).
+ * Note: Historical wash sessions in 'sessions' collection are preserved for school compliance auditing.
+ * @param {string} studentId 
+ * @returns {Promise<boolean>}
+ */
+export async function deleteStudent(studentId) {
+  if (!studentId || typeof studentId !== 'string') {
+    throw new Error('Valid studentId is required for deletion');
+  }
+
+  if (db && !isMockFirebase) {
+    try {
+      const studentRef = doc(db, 'students', studentId);
+      await deleteDoc(studentRef);
+      return true;
+    } catch (err) {
+      console.error('[studentService] Firestore deleteDoc failed:', err.message);
+      throw err;
+    }
+  }
+
+  // Mock / Local store mode
+  if (!mockStudentsStore.has(studentId)) {
+    throw new Error(`Student with ID "${studentId}" was not found.`);
+  }
+
+  mockStudentsStore.delete(studentId);
+  saveMockStudents();
+  return true;
+}
+
+/**
+ * Helper to reset in-memory student store during automated testing
+ */
+export function _resetMockStudentsForTesting() {
+  mockStudentsStore.clear();
+  if (typeof localStorage !== 'undefined') {
+    localStorage.removeItem('smartwash_mock_students');
+  }
 }

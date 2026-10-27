@@ -1,11 +1,89 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Search, UserPlus, ArrowRight, Flame, Filter, ChevronDown, RotateCcw } from 'lucide-react';
+import { 
+  Search, 
+  UserPlus, 
+  ArrowRight, 
+  Flame, 
+  Filter, 
+  ChevronDown, 
+  RotateCcw, 
+  Trash2, 
+  AlertTriangle, 
+  CheckCircle2, 
+  Users, 
+  X 
+} from 'lucide-react';
+import { deleteStudent } from '../../../../shared/services/studentService.js';
 
 export function StudentManagementList({ students = [], refreshData }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedClass, setSelectedClass] = useState('ALL');
   const [selectedPerformance, setSelectedPerformance] = useState('ALL');
+  const [studentToDelete, setStudentToDelete] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteFeedback, setDeleteFeedback] = useState({ type: null, message: '' });
+
+  const handleRequestDelete = (student, e) => {
+    if (e) e.stopPropagation();
+    setDeleteFeedback({ type: null, message: '' });
+    setStudentToDelete(student);
+  };
+
+  const handleCancelDelete = () => {
+    if (isDeleting) return;
+    setStudentToDelete(null);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!studentToDelete || isDeleting) return;
+
+    // Authorization check: only authorized teachers/staff
+    const isAuthorized = 
+      (typeof sessionStorage !== 'undefined' && sessionStorage.getItem('smartwash_teacher_auth') === 'true') ||
+      (typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('auth') === 'true');
+
+    if (!isAuthorized) {
+      setDeleteFeedback({
+        type: 'error',
+        message: 'Unauthorized: You must be signed in as a teacher to delete student records.'
+      });
+      setStudentToDelete(null);
+      return;
+    }
+
+    setIsDeleting(true);
+
+    try {
+      await deleteStudent(studentToDelete.studentId);
+      const targetName = studentToDelete.name;
+      const targetId = studentToDelete.studentId;
+      
+      setStudentToDelete(null);
+
+      if (refreshData) {
+        await refreshData();
+      }
+
+      setDeleteFeedback({
+        type: 'success',
+        message: `Student "${targetName}" (${targetId}) has been successfully deleted.`
+      });
+
+      // Clear success feedback after 5 seconds
+      setTimeout(() => {
+        setDeleteFeedback(prev => prev.type === 'success' ? { type: null, message: '' } : prev);
+      }, 5000);
+    } catch (err) {
+      console.error('[StudentManagementList] Delete error:', err);
+      setDeleteFeedback({
+        type: 'error',
+        message: `Failed to delete student: ${err.message || 'Database error occurred'}`
+      });
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   // Helper to extract clean class label
   const getStudentClassLabel = (st) => {
@@ -243,6 +321,51 @@ export function StudentManagementList({ students = [], refreshData }) {
         </div>
       </div>
 
+      {/* Delete Feedback Banner */}
+      {deleteFeedback.message && (
+        <div style={{
+          marginBottom: '20px',
+          padding: '12px 18px',
+          borderRadius: '14px',
+          border: '2px solid #1E293B',
+          boxShadow: '3px 3px 0 0 #1E293B',
+          background: deleteFeedback.type === 'success' ? '#D1FAE5' : '#FEE2E2',
+          color: '#1E293B',
+          fontSize: '13px',
+          fontWeight: 700,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: '12px',
+          fontFamily: 'Outfit, sans-serif'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            {deleteFeedback.type === 'success' ? (
+              <CheckCircle2 size={18} color="#059669" strokeWidth={2.5} />
+            ) : (
+              <AlertTriangle size={18} color="#DC2626" strokeWidth={2.5} />
+            )}
+            <span>{deleteFeedback.message}</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setDeleteFeedback({ type: null, message: '' })}
+            style={{
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              padding: '2px',
+              display: 'flex',
+              alignItems: 'center',
+              color: '#1E293B'
+            }}
+            title="Dismiss notification"
+          >
+            <X size={16} strokeWidth={2.5} />
+          </button>
+        </div>
+      )}
+
       <div style={{ overflowX: 'auto' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px' }}>
           <thead>
@@ -258,137 +381,73 @@ export function StudentManagementList({ students = [], refreshData }) {
               <th style={{ padding: '14px 16px', fontWeight: 800, fontFamily: 'Outfit, sans-serif' }}>Streak</th>
               <th style={{ padding: '14px 16px', fontWeight: 800, fontFamily: 'Outfit, sans-serif' }}>Avg Score</th>
               <th style={{ padding: '14px 16px', fontWeight: 800, fontFamily: 'Outfit, sans-serif' }}>Status</th>
-              <th style={{ padding: '14px 16px', fontWeight: 800, fontFamily: 'Outfit, sans-serif' }}>Action</th>
+              <th style={{ padding: '14px 16px', fontWeight: 800, fontFamily: 'Outfit, sans-serif' }}>Actions</th>
             </tr>
           </thead>
           <tbody>
-            {filteredStudents.length > 0 ? filteredStudents.map((st, idx) => (
-              <tr
-                key={st.studentId}
-                style={{
-                  borderBottom: '1px solid #E2E8F0',
-                  transition: 'background 0.15s ease'
-                }}
-                onMouseEnter={e => e.currentTarget.style.background = '#F8FAFC'}
-                onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-              >
-                <td style={{ padding: '14px 16px', fontWeight: 700, color: '#8B5CF6', fontFamily: 'Outfit, monospace, sans-serif' }}>
-                  {st.studentId}
-                </td>
-                <td style={{ padding: '14px 16px', fontWeight: 700, color: '#1E293B', display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  {st.photoUrl ? (
-                    <img
-                      src={st.photoUrl}
-                      alt={st.name}
-                      style={{
-                        width: '36px',
-                        height: '36px',
-                        borderRadius: '50%',
-                        objectFit: 'cover',
-                        border: '2px solid #1E293B'
-                      }}
-                    />
-                  ) : (
+            {students.length === 0 ? (
+              /* Friendly Empty State: When no students are enrolled in the database */
+              <tr>
+                <td colSpan="7" style={{ padding: '48px 24px', textAlign: 'center', color: '#64748B' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '14px' }}>
                     <div style={{
-                      width: '36px',
-                      height: '36px',
+                      width: '60px',
+                      height: '60px',
                       borderRadius: '50%',
-                      background: idx % 2 === 0 ? '#FBBF24' : '#34D399',
+                      background: '#EDE9FE',
                       border: '2px solid #1E293B',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      fontSize: '14px',
-                      fontWeight: 800,
-                      color: '#1E293B',
-                      fontFamily: 'Outfit, sans-serif'
+                      boxShadow: '3px 3px 0 0 #1E293B'
                     }}>
-                      {st.name.charAt(0)}
+                      <Users size={28} strokeWidth={2.2} color="#8B5CF6" />
                     </div>
-                  )}
-                  <span style={{ fontFamily: 'Outfit, sans-serif', fontSize: '15px' }}>{st.name}</span>
-                </td>
-                <td style={{ padding: '14px 16px', color: '#64748B', fontWeight: 600 }}>
-                  {st.className || 'N/A'} - {st.section || 'N/A'}
-                </td>
-                <td style={{ padding: '14px 16px' }}>
-                  <div style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '5px',
-                    background: (st.streak || 0) > 0 ? '#FEF3C7' : '#F1F5F9',
-                    border: '1.5px solid #1E293B',
-                    borderRadius: '9999px',
-                    padding: '3px 8px',
-                    fontSize: '12px',
-                    fontWeight: 800,
-                    fontFamily: 'Outfit, sans-serif'
-                  }}>
-                    <Flame
-                      size={13}
-                      color={(st.streak || 0) > 0 ? '#F59E0B' : '#94A3B8'}
-                      fill={(st.streak || 0) > 0 ? '#F59E0B' : 'none'}
-                    />
-                    <span>{st.streak || 0}</span>
+                    <div>
+                      <div style={{ fontSize: '17px', fontWeight: 800, color: '#1E293B', fontFamily: 'Outfit, sans-serif' }}>
+                        No students added yet. Add a student to get started.
+                      </div>
+                      <p style={{ margin: '6px 0 0 0', fontSize: '13px', color: '#64748B', fontWeight: 500 }}>
+                        Enroll students with biometric face descriptors to monitor handwashing compliance and streaks.
+                      </p>
+                    </div>
+                    <Link
+                      to="/teacher/students/add"
+                      style={{
+                        marginTop: '4px',
+                        padding: '10px 22px',
+                        borderRadius: '9999px',
+                        background: '#8B5CF6',
+                        color: '#FFFFFF',
+                        textDecoration: 'none',
+                        fontSize: '13px',
+                        fontWeight: 800,
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        border: '2px solid #1E293B',
+                        boxShadow: '3px 3px 0px 0px #1E293B',
+                        fontFamily: 'Outfit, sans-serif',
+                        transition: 'transform 0.15s ease'
+                      }}
+                      onMouseEnter={e => e.currentTarget.style.transform = 'translate(-1px, -1px)'}
+                      onMouseLeave={e => e.currentTarget.style.transform = 'none'}
+                    >
+                      <UserPlus size={16} strokeWidth={2.5} />
+                      <span>Add Student</span>
+                    </Link>
                   </div>
                 </td>
-                <td style={{ padding: '14px 16px', fontWeight: 800, fontFamily: 'Outfit, sans-serif' }}>
-                  {st.score !== null && st.score !== undefined ? (
-                    <span style={{
-                      background: st.score >= 80 ? '#D1FAE5' : (st.score >= 70 ? '#FEF3C7' : '#FEE2E2'),
-                      color: '#1E293B',
-                      padding: '3px 8px',
-                      borderRadius: '9999px',
-                      border: '1.5px solid #1E293B',
-                      fontSize: '12px'
-                    }}>
-                      {st.score} / 100
-                    </span>
-                  ) : (
-                    <span style={{ color: '#94A3B8', fontSize: '12px', fontWeight: 700 }}>N/A</span>
-                  )}
-                </td>
-                <td style={{ padding: '14px 16px' }}>
-                  <span style={{
-                    background: st.isActive !== false ? '#D1FAE5' : '#FEE2E2',
-                    color: '#1E293B',
-                    padding: '4px 10px',
-                    borderRadius: '9999px',
-                    fontSize: '11px',
-                    fontWeight: 800,
-                    border: '1.5px solid #1E293B',
-                    display: 'inline-block',
-                    fontFamily: 'Outfit, sans-serif'
-                  }}>
-                    {st.isActive !== false ? 'Active' : 'Inactive'}
-                  </span>
-                </td>
-                <td style={{ padding: '14px 16px' }}>
-                  <Link
-                    to={`/teacher/students/${st.studentId}`}
-                    style={{
-                      color: '#8B5CF6',
-                      textDecoration: 'none',
-                      fontSize: '13px',
-                      fontWeight: 800,
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '4px',
-                      fontFamily: 'Outfit, sans-serif'
-                    }}
-                  >
-                    <span>View Profile</span>
-                    <ArrowRight size={14} strokeWidth={2.5} />
-                  </Link>
-                </td>
               </tr>
-            )) : (
+            ) : filteredStudents.length === 0 ? (
+              /* Filter Empty State: When students exist but don't match active filter */
               <tr>
                 <td colSpan="7" style={{ padding: '36px', textAlign: 'center', color: '#64748B', fontWeight: 600 }}>
                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
                     <span>No students found matching current filters.</span>
                     {isFiltered && (
                       <button
+                        type="button"
                         onClick={resetFilters}
                         style={{
                           padding: '6px 14px',
@@ -408,10 +467,304 @@ export function StudentManagementList({ students = [], refreshData }) {
                   </div>
                 </td>
               </tr>
+            ) : (
+              filteredStudents.map((st, idx) => (
+                <tr
+                  key={st.studentId}
+                  style={{
+                    borderBottom: '1px solid #E2E8F0',
+                    transition: 'background 0.15s ease'
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.background = '#F8FAFC'}
+                  onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                >
+                  <td style={{ padding: '14px 16px', fontWeight: 700, color: '#8B5CF6', fontFamily: 'Outfit, monospace, sans-serif' }}>
+                    {st.studentId}
+                  </td>
+                  <td style={{ padding: '14px 16px', fontWeight: 700, color: '#1E293B', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    {st.photoUrl ? (
+                      <img
+                        src={st.photoUrl}
+                        alt={st.name}
+                        style={{
+                          width: '36px',
+                          height: '36px',
+                          borderRadius: '50%',
+                          objectFit: 'cover',
+                          border: '2px solid #1E293B'
+                        }}
+                      />
+                    ) : (
+                      <div style={{
+                        width: '36px',
+                        height: '36px',
+                        borderRadius: '50%',
+                        background: idx % 2 === 0 ? '#FBBF24' : '#34D399',
+                        border: '2px solid #1E293B',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: '14px',
+                        fontWeight: 800,
+                        color: '#1E293B',
+                        fontFamily: 'Outfit, sans-serif'
+                      }}>
+                        {st.name.charAt(0)}
+                      </div>
+                    )}
+                    <span style={{ fontFamily: 'Outfit, sans-serif', fontSize: '15px' }}>{st.name}</span>
+                  </td>
+                  <td style={{ padding: '14px 16px', color: '#64748B', fontWeight: 600 }}>
+                    {st.className || 'N/A'} - {st.section || 'N/A'}
+                  </td>
+                  <td style={{ padding: '14px 16px' }}>
+                    <div style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '5px',
+                      background: (st.streak || 0) > 0 ? '#FEF3C7' : '#F1F5F9',
+                      border: '1.5px solid #1E293B',
+                      borderRadius: '9999px',
+                      padding: '3px 8px',
+                      fontSize: '12px',
+                      fontWeight: 800,
+                      fontFamily: 'Outfit, sans-serif'
+                    }}>
+                      <Flame
+                        size={13}
+                        color={(st.streak || 0) > 0 ? '#F59E0B' : '#94A3B8'}
+                        fill={(st.streak || 0) > 0 ? '#F59E0B' : 'none'}
+                      />
+                      <span>{st.streak || 0}</span>
+                    </div>
+                  </td>
+                  <td style={{ padding: '14px 16px', fontWeight: 800, fontFamily: 'Outfit, sans-serif' }}>
+                    {st.score !== null && st.score !== undefined ? (
+                      <span style={{
+                        background: st.score >= 80 ? '#D1FAE5' : (st.score >= 70 ? '#FEF3C7' : '#FEE2E2'),
+                        color: '#1E293B',
+                        padding: '3px 8px',
+                        borderRadius: '9999px',
+                        border: '1.5px solid #1E293B',
+                        fontSize: '12px'
+                      }}>
+                        {st.score} / 100
+                      </span>
+                    ) : (
+                      <span style={{ color: '#94A3B8', fontSize: '12px', fontWeight: 700 }}>N/A</span>
+                    )}
+                  </td>
+                  <td style={{ padding: '14px 16px' }}>
+                    <span style={{
+                      background: st.isActive !== false ? '#D1FAE5' : '#FEE2E2',
+                      color: '#1E293B',
+                      padding: '4px 10px',
+                      borderRadius: '9999px',
+                      fontSize: '11px',
+                      fontWeight: 800,
+                      border: '1.5px solid #1E293B',
+                      display: 'inline-block',
+                      fontFamily: 'Outfit, sans-serif'
+                    }}>
+                      {st.isActive !== false ? 'Active' : 'Inactive'}
+                    </span>
+                  </td>
+                  <td style={{ padding: '14px 16px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <Link
+                        to={`/teacher/students/${st.studentId}`}
+                        style={{
+                          color: '#8B5CF6',
+                          textDecoration: 'none',
+                          fontSize: '13px',
+                          fontWeight: 800,
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '4px',
+                          fontFamily: 'Outfit, sans-serif',
+                          padding: '6px 10px',
+                          borderRadius: '8px',
+                          background: '#F5F3FF',
+                          border: '1.5px solid #1E293B',
+                          boxShadow: '1.5px 1.5px 0 0 #1E293B',
+                          transition: 'transform 0.15s ease'
+                        }}
+                        onMouseEnter={e => e.currentTarget.style.transform = 'translate(-1px, -1px)'}
+                        onMouseLeave={e => e.currentTarget.style.transform = 'none'}
+                      >
+                        <span>View Profile</span>
+                        <ArrowRight size={13} strokeWidth={2.5} />
+                      </Link>
+
+                      <button
+                        type="button"
+                        data-testid={`delete-student-${st.studentId}`}
+                        onClick={(e) => handleRequestDelete(st, e)}
+                        title={`Delete ${st.name}`}
+                        disabled={isDeleting}
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '4px',
+                          padding: '6px 10px',
+                          borderRadius: '8px',
+                          border: '1.5px solid #1E293B',
+                          background: '#FEE2E2',
+                          color: '#DC2626',
+                          cursor: isDeleting ? 'not-allowed' : 'pointer',
+                          boxShadow: '1.5px 1.5px 0 0 #1E293B',
+                          fontSize: '13px',
+                          fontWeight: 800,
+                          fontFamily: 'Outfit, sans-serif',
+                          transition: 'all 0.15s ease'
+                        }}
+                        onMouseEnter={e => {
+                          if (!isDeleting) {
+                            e.currentTarget.style.transform = 'translate(-1px, -1px)';
+                            e.currentTarget.style.background = '#FCA5A5';
+                          }
+                        }}
+                        onMouseLeave={e => {
+                          e.currentTarget.style.transform = 'none';
+                          e.currentTarget.style.background = '#FEE2E2';
+                        }}
+                      >
+                        <Trash2 size={13} strokeWidth={2.5} />
+                        <span>Delete</span>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))
             )}
           </tbody>
         </table>
       </div>
+
+      {/* Confirmation Dialog Modal */}
+      {studentToDelete && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(15, 23, 42, 0.65)',
+            backdropFilter: 'blur(3px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+            padding: '16px'
+          }}
+          onClick={handleCancelDelete}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="delete-dialog-title"
+            style={{
+              background: '#FFFFFF',
+              borderRadius: '24px',
+              padding: '28px',
+              border: '3px solid #1E293B',
+              boxShadow: '8px 8px 0px 0px #1E293B',
+              maxWidth: '440px',
+              width: '100%',
+              fontFamily: 'Outfit, sans-serif'
+            }}
+            onClick={e => e.stopPropagation()}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
+              <div style={{
+                width: '44px',
+                height: '44px',
+                borderRadius: '50%',
+                background: '#FEE2E2',
+                border: '2px solid #1E293B',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                boxShadow: '2px 2px 0 0 #1E293B'
+              }}>
+                <AlertTriangle size={22} strokeWidth={2.5} color="#DC2626" />
+              </div>
+              <div>
+                <h3 id="delete-dialog-title" style={{ margin: 0, fontSize: '20px', fontWeight: 800, color: '#1E293B' }}>
+                  Delete Student
+                </h3>
+                <span style={{ fontSize: '13px', color: '#64748B', fontWeight: 600 }}>
+                  {studentToDelete.name} ({studentToDelete.studentId})
+                </span>
+              </div>
+            </div>
+
+            <p style={{
+              fontSize: '14px',
+              color: '#334155',
+              lineHeight: 1.5,
+              margin: '0 0 24px 0',
+              fontWeight: 600
+            }}>
+              Are you sure you want to delete this student? This action cannot be undone.
+            </p>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
+              <button
+                type="button"
+                data-testid="cancel-delete-btn"
+                disabled={isDeleting}
+                onClick={handleCancelDelete}
+                style={{
+                  padding: '10px 18px',
+                  borderRadius: '9999px',
+                  border: '2px solid #1E293B',
+                  background: '#F1F5F9',
+                  color: '#1E293B',
+                  fontSize: '13px',
+                  fontWeight: 800,
+                  cursor: isDeleting ? 'not-allowed' : 'pointer',
+                  boxShadow: '2px 2px 0 0 #1E293B',
+                  fontFamily: 'Outfit, sans-serif'
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                data-testid="confirm-delete-btn"
+                disabled={isDeleting}
+                onClick={handleConfirmDelete}
+                style={{
+                  padding: '10px 20px',
+                  borderRadius: '9999px',
+                  border: '2px solid #1E293B',
+                  background: '#DC2626',
+                  color: '#FFFFFF',
+                  fontSize: '13px',
+                  fontWeight: 800,
+                  cursor: isDeleting ? 'not-allowed' : 'pointer',
+                  boxShadow: '2px 2px 0 0 #1E293B',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  fontFamily: 'Outfit, sans-serif'
+                }}
+              >
+                {isDeleting ? (
+                  <span>Deleting...</span>
+                ) : (
+                  <>
+                    <Trash2 size={14} strokeWidth={2.5} />
+                    <span>Delete</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

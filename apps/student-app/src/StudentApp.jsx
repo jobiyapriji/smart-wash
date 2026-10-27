@@ -15,7 +15,7 @@ import { useStepRecognition } from '../../../shared/hooks/useStepRecognition.js'
 import { useMediaPipeHands } from '../../../shared/hooks/useMediaPipeHands.js';
 import { createSession, updateSession, recordUnknownVisit } from '../../../shared/services/sessionService.js';
 import { calculateHandwashScore } from '../../../shared/services/scoringService.js';
-import { getAllStudents } from '../../../shared/services/studentService.js';
+
 import { isMockFirebase } from '../../../shared/firebaseConfig.js';
 import { HANDWASH_CONFIG } from '../../../shared/config/handwashConfig.js';
 
@@ -683,49 +683,6 @@ export function StudentKioskApp({ useMock = false }) {
                 fontFamily: 'Outfit, sans-serif'
               }}>
                 <span>👋 Step up and look at the camera to begin!</span>
-              </div>
-
-              {/* Quick Select Student */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', width: '100%', maxWidth: '340px', marginTop: '10px' }}>
-                <div style={{ fontSize: '11px', color: '#64748B', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                  {t('quick_select_student')}
-                </div>
-                <div style={{ display: 'flex', gap: '10px', justifyContent: 'center', flexWrap: 'wrap' }}>
-                  <button
-                    onClick={() => handleProceedWithStudent({ studentId: 'STU_101', name: 'Alex River', classId: 'Grade 5-A' })}
-                    style={{
-                      padding: '8px 16px',
-                      borderRadius: '9999px',
-                      border: '2px solid #1E293B',
-                      background: '#FFFDF5',
-                      color: '#1E293B',
-                      fontSize: '12px',
-                      fontWeight: 800,
-                      cursor: 'pointer',
-                      boxShadow: '2px 2px 0 0 #1E293B',
-                      fontFamily: 'Outfit, sans-serif'
-                    }}
-                  >
-                    👤 Alex River
-                  </button>
-                  <button
-                    onClick={() => handleProceedWithStudent({ studentId: 'STU_102', name: 'Jordan Taylor', classId: 'Grade 5-A' })}
-                    style={{
-                      padding: '8px 16px',
-                      borderRadius: '9999px',
-                      border: '2px solid #1E293B',
-                      background: '#FFFDF5',
-                      color: '#1E293B',
-                      fontSize: '12px',
-                      fontWeight: 800,
-                      cursor: 'pointer',
-                      boxShadow: '2px 2px 0 0 #1E293B',
-                      fontFamily: 'Outfit, sans-serif'
-                    }}
-                  >
-                    👤 Jordan Taylor
-                  </button>
-                </div>
               </div>
             </div>
           )}

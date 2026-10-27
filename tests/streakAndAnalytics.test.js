@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { calculateStreak } from '../shared/services/scoringService.js';
 import { getStudentSessions, getAllSessions } from '../shared/services/sessionService.js';
-import { getAllStudents } from '../shared/services/studentService.js';
+import { getAllStudents, enrollStudent } from '../shared/services/studentService.js';
 
 describe('Accurate Streak & Dynamic Teacher Analytics Audit', () => {
 
@@ -78,6 +78,11 @@ describe('Accurate Streak & Dynamic Teacher Analytics Audit', () => {
   });
 
   it('7. Filtering students by class and performance isolates matching records accurately', async () => {
+    // Explicitly enroll test records for test isolation
+    await enrollStudent({ studentId: 'STU_101', name: 'Alex River', classId: 'Grade 5-A' });
+    await enrollStudent({ studentId: 'STU_102', name: 'Jordan Taylor', classId: 'Grade 5-A' });
+    await enrollStudent({ studentId: 'STU_103', name: 'Sam Chen', classId: 'Grade 5-B' });
+
     const students = await getAllStudents();
     
     // Filter by class Grade 5-A
