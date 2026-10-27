@@ -273,11 +273,7 @@ export class StepRecognitionEngine {
       ? isHandsMoving 
       : (handMovement >= this.movementThreshold);
 
-    // RULE 3 & 4: Step validation (Classifier vs Angle-Invariant Landmark Geometry Fusion)
-    const stepMatch = mappedStep === this.currentStep;
-    const confidenceCheck = confidence >= this.confidenceThreshold;
-    const classifierPassed = stepMatch && confidenceCheck;
-
+    // Evaluate Angle-Invariant Landmark Geometry Rule first
     let geometryPassed = false;
     let geometryName = null;
 
@@ -294,6 +290,11 @@ export class StepRecognitionEngine {
 
     this.geometryRulePassed = geometryPassed;
     this.geometryRuleName = geometryPassed ? geometryName : null;
+
+    // RULE 3 & 4: Step validation (Classifier vs Angle-Invariant Landmark Geometry Fusion)
+    const stepMatch = mappedStep === this.currentStep || (this.currentStep === 3 && (mappedStep === 4 || mappedStep === 2) && geometryPassed);
+    const confidenceCheck = confidence >= this.confidenceThreshold;
+    const classifierPassed = stepMatch && confidenceCheck;
 
     // Adaptive Ensemble Fusion:
     // Frame qualifies if classifier matches target step OR angle-invariant 3D landmark geometry validates pose!

@@ -294,6 +294,135 @@ describe('Step 3: Palm-to-Palm Fingers Interlaced Geometry & Transitions', () =>
     expect(isStep3).toBe(false);
   });
 
+  it('validates Step 3 when MediaPipe detects a single merged hand from tightly interlaced fingers', () => {
+    const mergedHand = {
+      landmarks: Array.from({ length: 21 }, (_, i) => ({
+        x: 0.40 + (i % 5) * 0.05,
+        y: 0.35 + Math.floor(i / 5) * 0.05,
+        z: 0
+      })),
+      scale: 0.18,
+      isMerged: true
+    };
+
+    const isStep3 = checkStep3FingersInterlaced([mergedHand]);
+    expect(isStep3).toBe(true);
+
+    const result = evaluateDryModeGeometry(3, [mergedHand], 0.08);
+    expect(result.passed).toBe(true);
+    expect(result.ruleName).toBe('Step 3 (Fingers Interlaced)');
+  });
+
+  it('rejects Step 3 when hands are stacked in palm-over-dorsum pose (Step 2)', () => {
+    const handA = create3DHand({
+      wrist: { x: 0.5, y: 0.6, z: 0 },
+      indexMcp: { x: 0.45, y: 0.45, z: 0 },
+      pinkyMcp: { x: 0.55, y: 0.48, z: 0 }
+    });
+    const handB = create3DHand({
+      wrist: { x: 0.5, y: 0.6, z: 0.05 },
+      indexMcp: { x: 0.45, y: 0.45, z: 0.05 },
+      pinkyMcp: { x: 0.55, y: 0.48, z: 0.05 }
+    });
+
+    const isStep3 = checkStep3FingersInterlaced([handA, handB]);
+    expect(isStep3).toBe(false);
+  });
+
+  it('advances Step 3 timer continuously when movement qualifies and pauses/holds without reset on wrong pose', () => {
+    const engine = new StepRecognitionEngine({
+      mode: 'strict',
+      consecutiveFramesRequired: 3,
+      targetDurationMs: 1000
+    });
+    engine.currentStep = 3;
+
+    let now = 1000;
+    // Debounce streak requires 3 frames
+    for (let i = 0; i < 5; i++) {
+      engine.predict({
+        class: 'Step_3',
+        confidence: 0.95,
+        handCount: 2,
+        handConfidence: 0.95,
+        handMovement: 0.08
+      }, now);
+      now += 100;
+    }
+    expect(engine.isStepActive).toBe(true);
+    const progressBeforeWrongPose = engine.activeTimeMs;
+    expect(progressBeforeWrongPose).toBeGreaterThan(0);
+
+    // Wrong pose presented: Step_1 instead of Step_3
+    engine.predict({
+      class: 'Step_1',
+      confidence: 0.95,
+      handCount: 2,
+      handConfidence: 0.95,
+      handMovement: 0.08
+    }, now);
+
+    // Timer is frozen/paused, but progress is preserved (never reset to 0.0s)
+    expect(engine.activeTimeMs).toBe(progressBeforeWrongPose);
+    expect(engine.statusReason).toContain('Wrong pose for Step 3');
+
+    // Correct Step 3 pose resumes and reaches target
+    now += 200;
+    for (let i = 0; i < 15; i++) {
+      engine.predict({
+        class: 'Step_3',
+        confidence: 0.95,
+        handCount: 2,
+        handConfidence: 0.95,
+        handMovement: 0.08
+      }, now);
+      now += 100;
+    }
+    expect(engine.completedSteps).toContain(3);
+    expect(engine.currentStep).toBe(4);
+  });
+
+  it('accepts Step 3 adaptive ensemble fusion when model predicts Step_4 with verified interlaced geometry', () => {
+    const engine = new StepRecognitionEngine({
+      mode: 'adaptive',
+      enableGeometryFallback: true,
+      consecutiveFramesRequired: 3,
+      targetDurationMs: 500
+    });
+    engine.currentStep = 3;
+
+    const mergedHand = {
+      landmarks: Array.from({ length: 21 }, (_, i) => ({
+        x: 0.40 + (i % 5) * 0.05,
+        y: 0.35 + Math.floor(i / 5) * 0.05,
+        z: 0
+      })),
+      scale: 0.18,
+      isMerged: true
+    };
+
+    let now = 1000;
+    let geomPassedOnStep3 = false;
+    for (let i = 0; i < 12; i++) {
+      const res = engine.predict({
+        class: 'Step_4', // raw classifier outputs Step_4 during interlaced fingers
+        confidence: 0.95,
+        handCount: 1,
+        handConfidence: 0.95,
+        handMovement: 0.08,
+        handsData: [mergedHand]
+      }, now);
+      if (res.rawStep === 3) {
+        geomPassedOnStep3 = res.geometryRulePassed;
+      }
+      now += 100;
+    }
+
+    expect(geomPassedOnStep3).toBe(true);
+    expect(engine.completedSteps).toContain(3);
+    expect(engine.currentStep).toBe(4);
+  });
+
   it('progresses smoothly through Step 1 -> Step 2 -> Step 3', () => {
     const engine = new StepRecognitionEngine({
       mode: 'strict',

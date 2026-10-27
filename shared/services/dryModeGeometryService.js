@@ -294,7 +294,26 @@ export function checkStep2PalmOverDorsum(handsData = [], thresholds = HANDWASH_C
  * - Fingertip positions of the two hands alternate across horizontal or vertical axis
  */
 export function checkStep3FingersInterlaced(handsData = [], thresholds = HANDWASH_CONFIG.GEOMETRY_THRESHOLDS) {
-  if (!handsData || handsData.length < 2) return false;
+  if (!handsData || handsData.length === 0) return false;
+
+  // Case A: Overlapping hands merged into 1 detected hand (interlaced fingers)
+  if (handsData.length === 1) {
+    const h = handsData[0];
+    if (!h.landmarks || h.landmarks.length < 21) return false;
+
+    const box = getHandBoundingBox(h.landmarks);
+    const handScale = h.scale || computeHandScale(h.landmarks);
+    const scaleRatio = box.width / Math.max(0.001, handScale);
+    const aspectRatio = box.width / Math.max(0.001, box.height);
+
+    // Single merged hand from interlaced hands forms a wide merged contour
+    if (isMergedHand(h.landmarks, handScale) || (scaleRatio >= 0.70 && box.area >= 0.012) || aspectRatio >= 0.85) {
+      return true;
+    }
+    return false;
+  }
+
+  // Case B: 2 detected hands
   const hA = handsData[0];
   const hB = handsData[1];
   if (!hA.landmarks || !hB.landmarks) return false;
@@ -302,48 +321,58 @@ export function checkStep3FingersInterlaced(handsData = [], thresholds = HANDWAS
   const boxA = getHandBoundingBox(hA.landmarks);
   const boxB = getHandBoundingBox(hB.landmarks);
   const overlap = computeBoxOverlap(boxA, boxB);
-  const minOverlap = thresholds?.STEP_3_BOX_OVERLAP ?? 0.35;
-  if (overlap < minOverlap) return false;
+  const minOverlap = thresholds?.STEP_3_BOX_OVERLAP ?? 0.25;
 
-  // Distinguish from Step 2 (palm over dorsum): in Step 3 palms oppose each other
+  const palmA = hA.palmCenter || computePalmCenter(hA.landmarks);
+  const palmB = hB.palmCenter || computePalmCenter(hB.landmarks);
+  if (!palmA || !palmB) return false;
+
+  const scaleA = hA.scale || computeHandScale(hA.landmarks);
+  const scaleB = hB.scale || computeHandScale(hB.landmarks);
+  const avgScale = Math.max(0.01, (scaleA + scaleB) / 2);
+  const palmDist = dist2D(palmA, palmB);
+  const normalizedPalmDist = palmDist / avgScale;
+
+  // Both hands must be close together (hands in contact or overlapping)
+  if (overlap < 0.15 && normalizedPalmDist > 1.2) return false;
+
+  // Check finger direction vectors (both hands pointing generally in similar direction)
+  const dirA = getHandDirectionVector(hA.landmarks);
+  const dirB = getHandDirectionVector(hB.landmarks);
+  const dirDot = (dirA.x * dirB.x) + (dirA.y * dirB.y);
+  if (dirDot < -0.30) return false;
+
+  // Distinguish from Step 2 (palm over dorsum):
+  // Only reject if one hand is stacked flat on top of the other's dorsum with normals pointing same way
+  const palmAInBoxB = isPointInBox(palmA, boxB, 0.02);
+  const palmBInBoxA = isPointInBox(palmB, boxA, 0.02);
   const normA = computePalmNormal(hA.landmarks);
   const normB = computePalmNormal(hB.landmarks);
   const normalDot = dotProduct3D(normA, normB);
-  if (normalDot > 0.35) {
-    return false; // Normals pointing same direction indicates dorsum rub (Step 2), not Step 3
+  if ((palmAInBoxB || palmBInBoxA) && normalDot > 0.50) {
+    return false; // Stacking on back of hand is Step 2 (dorsum rub)
   }
 
-  // Collect fingertips of both hands (index, middle, ring, pinky)
+  // Project fingertips onto the axis perpendicular to hand direction (angle-invariant lateral interleaving)
+  const avgDirX = (dirA.x + dirB.x) / 2;
+  const avgDirY = (dirA.y + dirB.y) / 2;
+  const dirLen = Math.hypot(avgDirX, avgDirY) || 1;
+  const perpX = -avgDirY / dirLen;
+  const perpY = avgDirX / dirLen;
+
   const tipIndices = [8, 12, 16, 20];
   const tips = [];
   for (const idx of tipIndices) {
-    if (hA.landmarks[idx]) tips.push({ x: hA.landmarks[idx].x, y: hA.landmarks[idx].y, owner: 'A' });
-    if (hB.landmarks[idx]) tips.push({ x: hB.landmarks[idx].x, y: hB.landmarks[idx].y, owner: 'B' });
+    if (hA.landmarks[idx]) tips.push({ proj: hA.landmarks[idx].x * perpX + hA.landmarks[idx].y * perpY, owner: 'A' });
+    if (hB.landmarks[idx]) tips.push({ proj: hB.landmarks[idx].x * perpX + hB.landmarks[idx].y * perpY, owner: 'B' });
   }
 
-  // Count alternations along horizontal axis
-  const tipsX = [...tips].sort((a, b) => a.x - b.x);
-  let alternationsX = 0;
-  for (let i = 1; i < tipsX.length; i++) {
-    if (tipsX[i].owner !== tipsX[i - 1].owner) alternationsX++;
+  tips.sort((a, b) => a.proj - b.proj);
+  let lateralAlternations = 0;
+  for (let i = 1; i < tips.length; i++) {
+    if (tips[i].owner !== tips[i - 1].owner) lateralAlternations++;
   }
 
-  // Count alternations along vertical axis (for tilted hands / varying angles)
-  const tipsY = [...tips].sort((a, b) => a.y - b.y);
-  let alternationsY = 0;
-  for (let i = 1; i < tipsY.length; i++) {
-    if (tipsY[i].owner !== tipsY[i - 1].owner) alternationsY++;
-  }
-
-  // Determine primary pointing direction to evaluate lateral interleaving
-  const dirA = getHandDirectionVector(hA.landmarks);
-  const dirB = getHandDirectionVector(hB.landmarks);
-  const avgDy = (Math.abs(dirA.y) + Math.abs(dirB.y)) / 2;
-  const avgDx = (Math.abs(dirA.x) + Math.abs(dirB.x)) / 2;
-
-  // If hands point vertically (up/down), interlacing alternates along X.
-  // If hands point horizontally (left/right), interlacing alternates along Y.
-  const lateralAlternations = avgDy >= avgDx ? alternationsX : alternationsY;
   const minAlternations = thresholds?.STEP_3_MIN_ALTERNATIONS ?? 2;
   return lateralAlternations >= minAlternations;
 }
