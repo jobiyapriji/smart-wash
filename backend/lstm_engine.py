@@ -133,9 +133,9 @@ class LSTMHandwashClassifier:
         pts = np.array([[lm.x, lm.y, lm.z] for lm in landmarks_21], dtype=np.float32)
         wrist = pts[0]
         translated = pts - wrist
-        middle_mcp = translated[9]  # landmark 9 = middle finger MCP
-        scale = np.linalg.norm(middle_mcp)  # training scale: wrist to middle MCP
-        # Avoid division by zero
+        palm_len = float(np.linalg.norm(translated[9]))
+        palm_wid = float(np.linalg.norm(pts[17] - pts[5]))
+        scale = max(palm_len, palm_wid * 1.15, 0.04)
         normalized = translated / scale if scale > 1e-5 else translated
         return normalized.flatten()
 
@@ -167,24 +167,15 @@ class LSTMHandwashClassifier:
             avg_conf = float(res.handedness[0][0].score) if res.handedness else 0.85
             hand_norm = self.normalize_single_hand(res.hand_landmarks[0])
 
-            # Mirror hand to simulate merged hand overlap, preserving handedness slotting
+            # Mirror hand to simulate merged hand overlap
             mirrored = hand_norm.copy().reshape(-1, 3)
             mirrored[:, 0] = -mirrored[:, 0]
             mirrored_flat = mirrored.flatten()
-            # Determine handedness label (default to right if unavailable)
-            label = res.handedness[0][0].category_name.lower() if res.handedness else "right"
-            if label == "left":
-                feat[0:HAND_FEATURE_DIM] = hand_norm
-                feat[HAND_FEATURE_DIM:FEATURE_DIM] = mirrored_flat
-            else:
-                feat[0:HAND_FEATURE_DIM] = mirrored_flat
-                feat[HAND_FEATURE_DIM:FEATURE_DIM] = hand_norm
+            feat[0:HAND_FEATURE_DIM] = hand_norm
+            feat[HAND_FEATURE_DIM:FEATURE_DIM] = mirrored_flat
             # Report two hands so downstream logic treats it as a two‑hand frame
             num_hands = 2
         else:
-            # Handedness-aware slot assignment (mirrors training pipeline)
-            h0_label = res.handedness[0][0].category_name.lower() if res.handedness else "left"
-            h1_label = res.handedness[1][0].category_name.lower() if len(res.handedness) > 1 else "right"
             score0 = float(res.handedness[0][0].score) if (res.handedness and len(res.handedness) > 0 and len(res.handedness[0]) > 0) else 0.85
             score1 = float(res.handedness[1][0].score) if (res.handedness and len(res.handedness) > 1 and len(res.handedness[1]) > 0) else 0.85
             avg_conf = (score0 + score1) / 2.0
@@ -192,22 +183,16 @@ class LSTMHandwashClassifier:
             h0_norm = self.normalize_single_hand(res.hand_landmarks[0])
             h1_norm = self.normalize_single_hand(res.hand_landmarks[1])
 
-            if h0_label == "left" and h1_label == "right":
+            # Deterministic spatial ordering: Leftmost hand at [0:63], Rightmost hand at [63:126]
+            # Matches extract_landmarks.py training distribution with zero handedness-flip jitter
+            x0 = res.hand_landmarks[0][0].x
+            x1 = res.hand_landmarks[1][0].x
+            if x0 <= x1:
                 feat[0:HAND_FEATURE_DIM] = h0_norm
                 feat[HAND_FEATURE_DIM:FEATURE_DIM] = h1_norm
-            elif h0_label == "right" and h1_label == "left":
+            else:
                 feat[0:HAND_FEATURE_DIM] = h1_norm
                 feat[HAND_FEATURE_DIM:FEATURE_DIM] = h0_norm
-            else:
-                # Fallback to spatial ordering if handedness ambiguous
-                x0 = res.hand_landmarks[0][0].x
-                x1 = res.hand_landmarks[1][0].x
-                if x0 <= x1:
-                    feat[0:HAND_FEATURE_DIM] = h0_norm
-                    feat[HAND_FEATURE_DIM:FEATURE_DIM] = h1_norm
-                else:
-                    feat[0:HAND_FEATURE_DIM] = h1_norm
-                    feat[HAND_FEATURE_DIM:FEATURE_DIM] = h0_norm
 
         return feat, num_hands, avg_conf, raw_landmarks
 

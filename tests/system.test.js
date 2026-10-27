@@ -263,6 +263,36 @@ describe('Phase 6: Production WebSocket Resolution', () => {
     
     // In node/test environment without window
     expect(getWebSocketEndpoint()).toBe('ws://localhost:4550/ws_model');
+
+    // Simulate browser window on port 3000
+    globalThis.window = {
+      location: { protocol: 'http:', hostname: 'localhost', port: '3000', host: 'localhost:3000' }
+    };
+    expect(getWebSocketEndpoint()).toBe('ws://localhost:4550/ws_model');
+
+    // Simulate browser window on port 3002 (different Vite port)
+    globalThis.window.location.port = '3002';
+    globalThis.window.location.host = 'localhost:3002';
+    expect(getWebSocketEndpoint()).toBe('ws://localhost:4550/ws_model');
+
+    // Simulate browser window on LAN host (e.g. 192.168.1.100:3000)
+    globalThis.window.location.hostname = '192.168.1.100';
+    globalThis.window.location.port = '3000';
+    globalThis.window.location.host = '192.168.1.100:3000';
+    expect(getWebSocketEndpoint()).toBe('ws://192.168.1.100:4550/ws_model');
+
+    // Simulate HTTPS deployment
+    globalThis.window.location.protocol = 'https:';
+    expect(getWebSocketEndpoint()).toBe('wss://192.168.1.100:4550/ws_model');
+
+    // Simulate production reverse proxy (port 80 or 443)
+    globalThis.window.location.protocol = 'https:';
+    globalThis.window.location.port = '443';
+    globalThis.window.location.host = 'smartwash.school.edu';
+    expect(getWebSocketEndpoint()).toBe('wss://smartwash.school.edu/ws_model');
+
+    // Clean up
+    delete globalThis.window;
   });
 });
 
