@@ -346,3 +346,98 @@ describe('Step 3: Palm-to-Palm Fingers Interlaced Geometry & Transitions', () =>
   });
 });
 
+describe('Steps 4, 5, 6 Geometry & Full 6-Step Sequence Transition', () => {
+  it('validates Step 4 when fingers are curled against opposing palm', () => {
+    const handA = create3DHand({
+      wrist: { x: 0.48, y: 0.6, z: 0 },
+      scale: 0.20
+    });
+    const handB = create3DHand({
+      wrist: { x: 0.50, y: 0.6, z: 0.02 },
+      scale: 0.20
+    });
+
+    // Curl fingers of Hand A: fingertips closer to wrist than PIP joints
+    // Index: tip 8, pip 6
+    handA.landmarks[6] = { x: 0.45, y: 0.50, z: 0 };
+    handA.landmarks[8] = { x: 0.46, y: 0.55, z: 0 }; // curled back toward wrist (0.60)
+    // Middle: tip 12, pip 10
+    handA.landmarks[10] = { x: 0.49, y: 0.48, z: 0 };
+    handA.landmarks[12] = { x: 0.49, y: 0.54, z: 0 }; // curled back toward wrist
+    // Ring: tip 16, pip 14
+    handA.landmarks[14] = { x: 0.52, y: 0.50, z: 0 };
+    handA.landmarks[16] = { x: 0.52, y: 0.55, z: 0 };
+
+    const isStep4 = checkStep4BacksOfFingers([handA, handB]);
+    expect(isStep4).toBe(true);
+
+    const res = evaluateDryModeGeometry(4, [handA, handB], 0.08);
+    expect(res.passed).toBe(true);
+    expect(res.ruleName).toBe('Step 4 (Backs of Fingers)');
+  });
+
+  it('validates Step 5 when thumb is clasped with rotational motion', () => {
+    const handA = create3DHand({ wrist: { x: 0.48, y: 0.55, z: 0 } });
+    const handB = create3DHand({ wrist: { x: 0.50, y: 0.55, z: 0.02 } });
+
+    // Place thumb of Hand A (landmark 4) directly at palm center of Hand B
+    handA.landmarks[4] = { x: handB.palmCenter.x, y: handB.palmCenter.y, z: handB.palmCenter.z };
+
+    // With rotational movement >= 0.03
+    expect(checkStep5Thumbs([handA, handB], 0.05)).toBe(true);
+    // Without movement -> fails
+    expect(checkStep5Thumbs([handA, handB], 0.01)).toBe(false);
+  });
+
+  it('validates Step 6 when fingertips are rubbed circularly on opposing palm', () => {
+    const handA = create3DHand({ wrist: { x: 0.46, y: 0.55, z: 0 } });
+    const handB = create3DHand({ wrist: { x: 0.52, y: 0.55, z: 0.02 } });
+
+    // Center fingertips of Hand A (8, 12, 16, 20) on Palm B
+    const palm = handB.palmCenter;
+    handA.landmarks[8] = { x: palm.x - 0.01, y: palm.y, z: palm.z };
+    handA.landmarks[12] = { x: palm.x, y: palm.y, z: palm.z };
+    handA.landmarks[16] = { x: palm.x + 0.01, y: palm.y, z: palm.z };
+    handA.landmarks[20] = { x: palm.x + 0.02, y: palm.y, z: palm.z };
+
+    // With rubbing movement >= 0.03
+    expect(checkStep6Fingertips([handA, handB], 0.05)).toBe(true);
+    // Without movement -> fails
+    expect(checkStep6Fingertips([handA, handB], 0.01)).toBe(false);
+  });
+
+  it('progresses through the entire 6-step WHO sequence and finishes cleanly', () => {
+    const engine = new StepRecognitionEngine({
+      mode: 'strict',
+      targetDurationMs: 300 // 300ms per step
+    });
+
+    let now = 1000;
+
+    let lastOutput = null;
+    for (let step = 1; step <= 6; step++) {
+      expect(engine.currentStep).toBe(step);
+
+      // Perform the step for 12 frames (1200ms > 300ms target)
+      for (let f = 0; f < 12; f++) {
+        lastOutput = engine.predict({
+          class: `Step_${step}`,
+          confidence: 0.95,
+          handCount: 2,
+          handConfidence: 0.95,
+          handMovement: 0.08
+        }, now);
+        now += 100;
+      }
+
+      expect(engine.completedSteps).toContain(step);
+    }
+
+    // After Step 6, sequence is completed
+    expect(engine.completedSteps).toEqual([1, 2, 3, 4, 5, 6]);
+    expect(engine.currentStep).toBeGreaterThan(6);
+    expect(lastOutput.isFinished).toBe(true);
+  });
+});
+
+
