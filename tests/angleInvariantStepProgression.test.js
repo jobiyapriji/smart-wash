@@ -230,3 +230,119 @@ describe('Adaptive Ensemble Fusion: Bypassing 6-Video ML Angle Constraint', () =
     expect(engine.completedSteps.length).toBe(0);
   });
 });
+
+describe('Step 3: Palm-to-Palm Fingers Interlaced Geometry & Transitions', () => {
+  it('validates Step 3 when palms oppose each other and fingertips alternate', () => {
+    // Hand A: Left hand with opposing normal
+    const handA = create3DHand({
+      wrist: { x: 0.45, y: 0.6, z: 0 },
+      indexMcp: { x: 0.42, y: 0.45, z: 0 },
+      pinkyMcp: { x: 0.48, y: 0.48, z: 0 }
+    });
+    // Hand B: Right hand with opposing normal
+    const handB = create3DHand({
+      wrist: { x: 0.47, y: 0.6, z: 0.02 },
+      indexMcp: { x: 0.50, y: 0.45, z: 0.02 },
+      pinkyMcp: { x: 0.44, y: 0.48, z: 0.02 }
+    });
+
+    // Interlace fingertips: alternate x coordinates of index(8), middle(12), ring(16), pinky(20)
+    // A: 8->0.41, 12->0.45, 16->0.49, 20->0.53
+    // B: 8->0.43, 12->0.47, 16->0.51, 20->0.55
+    handA.landmarks[8] = { x: 0.41, y: 0.35, z: 0 };
+    handB.landmarks[8] = { x: 0.43, y: 0.35, z: 0 };
+    handA.landmarks[12] = { x: 0.45, y: 0.33, z: 0 };
+    handB.landmarks[12] = { x: 0.47, y: 0.33, z: 0 };
+    handA.landmarks[16] = { x: 0.49, y: 0.35, z: 0 };
+    handB.landmarks[16] = { x: 0.51, y: 0.35, z: 0 };
+    handA.landmarks[20] = { x: 0.53, y: 0.37, z: 0 };
+    handB.landmarks[20] = { x: 0.55, y: 0.37, z: 0 };
+
+    const isStep3 = checkStep3FingersInterlaced([handA, handB]);
+    expect(isStep3).toBe(true);
+
+    const result = evaluateDryModeGeometry(3, [handA, handB], 0.08);
+    expect(result.passed).toBe(true);
+    expect(result.ruleName).toBe('Step 3 (Fingers Interlaced)');
+  });
+
+  it('rejects Step 3 when palms are parallel but fingers are not interlaced (Step 1 pose)', () => {
+    // Both hands palm to palm, but fingers do not alternate (all Hand A to the left of Hand B)
+    const handA = create3DHand({
+      wrist: { x: 0.44, y: 0.6, z: 0 },
+      indexMcp: { x: 0.42, y: 0.45, z: 0 },
+      pinkyMcp: { x: 0.46, y: 0.48, z: 0 }
+    });
+    const handB = create3DHand({
+      wrist: { x: 0.48, y: 0.6, z: 0.02 },
+      indexMcp: { x: 0.50, y: 0.45, z: 0.02 },
+      pinkyMcp: { x: 0.46, y: 0.48, z: 0.02 }
+    });
+
+    // All handA fingertips are < 0.46, all handB fingertips are > 0.48 -> zero alternations
+    handA.landmarks[8] = { x: 0.40, y: 0.35, z: 0 };
+    handA.landmarks[12] = { x: 0.42, y: 0.33, z: 0 };
+    handA.landmarks[16] = { x: 0.44, y: 0.35, z: 0 };
+    handA.landmarks[20] = { x: 0.45, y: 0.37, z: 0 };
+
+    handB.landmarks[8] = { x: 0.49, y: 0.35, z: 0 };
+    handB.landmarks[12] = { x: 0.51, y: 0.33, z: 0 };
+    handB.landmarks[16] = { x: 0.53, y: 0.35, z: 0 };
+    handB.landmarks[20] = { x: 0.55, y: 0.37, z: 0 };
+
+    const isStep3 = checkStep3FingersInterlaced([handA, handB]);
+    expect(isStep3).toBe(false);
+  });
+
+  it('progresses smoothly through Step 1 -> Step 2 -> Step 3', () => {
+    const engine = new StepRecognitionEngine({
+      mode: 'strict',
+      targetDurationMs: 500 // 500ms per step for unit test
+    });
+
+    let now = 1000;
+
+    // Advance Step 1 (predict Step_1)
+    for (let i = 0; i < 15; i++) {
+      engine.predict({
+        class: 'Step_1',
+        confidence: 0.95,
+        handCount: 2,
+        handConfidence: 0.95,
+        handMovement: 0.08
+      }, now);
+      now += 100;
+    }
+    expect(engine.completedSteps).toContain(1);
+    expect(engine.currentStep).toBe(2);
+
+    // Advance Step 2 (predict Step_2)
+    for (let i = 0; i < 15; i++) {
+      engine.predict({
+        class: 'Step_2',
+        confidence: 0.95,
+        handCount: 2,
+        handConfidence: 0.95,
+        handMovement: 0.08
+      }, now);
+      now += 100;
+    }
+    expect(engine.completedSteps).toContain(2);
+    expect(engine.currentStep).toBe(3);
+
+    // Advance Step 3 (predict Step_3)
+    for (let i = 0; i < 15; i++) {
+      engine.predict({
+        class: 'Step_3',
+        confidence: 0.95,
+        handCount: 2,
+        handConfidence: 0.95,
+        handMovement: 0.08
+      }, now);
+      now += 100;
+    }
+    expect(engine.completedSteps).toContain(3);
+    expect(engine.currentStep).toBe(4);
+  });
+});
+

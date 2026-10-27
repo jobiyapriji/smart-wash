@@ -302,8 +302,16 @@ export function checkStep3FingersInterlaced(handsData = [], thresholds = HANDWAS
   const boxA = getHandBoundingBox(hA.landmarks);
   const boxB = getHandBoundingBox(hB.landmarks);
   const overlap = computeBoxOverlap(boxA, boxB);
-  const minOverlap = thresholds?.STEP_3_BOX_OVERLAP ?? 0.45;
+  const minOverlap = thresholds?.STEP_3_BOX_OVERLAP ?? 0.35;
   if (overlap < minOverlap) return false;
+
+  // Distinguish from Step 2 (palm over dorsum): in Step 3 palms oppose each other
+  const normA = computePalmNormal(hA.landmarks);
+  const normB = computePalmNormal(hB.landmarks);
+  const normalDot = dotProduct3D(normA, normB);
+  if (normalDot > 0.35) {
+    return false; // Normals pointing same direction indicates dorsum rub (Step 2), not Step 3
+  }
 
   // Collect fingertips of both hands (index, middle, ring, pinky)
   const tipIndices = [8, 12, 16, 20];
@@ -327,9 +335,17 @@ export function checkStep3FingersInterlaced(handsData = [], thresholds = HANDWAS
     if (tipsY[i].owner !== tipsY[i - 1].owner) alternationsY++;
   }
 
-  const maxAlternations = Math.max(alternationsX, alternationsY);
+  // Determine primary pointing direction to evaluate lateral interleaving
+  const dirA = getHandDirectionVector(hA.landmarks);
+  const dirB = getHandDirectionVector(hB.landmarks);
+  const avgDy = (Math.abs(dirA.y) + Math.abs(dirB.y)) / 2;
+  const avgDx = (Math.abs(dirA.x) + Math.abs(dirB.x)) / 2;
+
+  // If hands point vertically (up/down), interlacing alternates along X.
+  // If hands point horizontally (left/right), interlacing alternates along Y.
+  const lateralAlternations = avgDy >= avgDx ? alternationsX : alternationsY;
   const minAlternations = thresholds?.STEP_3_MIN_ALTERNATIONS ?? 2;
-  return maxAlternations >= minAlternations;
+  return lateralAlternations >= minAlternations;
 }
 
 /**

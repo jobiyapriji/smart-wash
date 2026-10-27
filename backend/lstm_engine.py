@@ -164,17 +164,15 @@ class LSTMHandwashClassifier:
             return feat, 0, 0.0, []
 
         if num_hands == 1:
-            avg_conf = float(res.handedness[0][0].score) if res.handedness else 0.85
+            label = res.handedness[0][0].category_name if (res.handedness and len(res.handedness) > 0 and len(res.handedness[0]) > 0) else "Right"
+            avg_conf = float(res.handedness[0][0].score) if (res.handedness and len(res.handedness) > 0 and len(res.handedness[0]) > 0) else 0.85
             hand_norm = self.normalize_single_hand(res.hand_landmarks[0])
 
-            # Mirror hand to simulate merged hand overlap
-            mirrored = hand_norm.copy().reshape(-1, 3)
-            mirrored[:, 0] = -mirrored[:, 0]
-            mirrored_flat = mirrored.flatten()
-            feat[0:HAND_FEATURE_DIM] = hand_norm
-            feat[HAND_FEATURE_DIM:FEATURE_DIM] = mirrored_flat
-            # Report two hands so downstream logic treats it as a two‑hand frame
-            num_hands = 2
+            # Canonical handedness slotting (matches training pipeline): Left at [0:63], Right at [63:126]
+            if label.lower() == "left":
+                feat[0:HAND_FEATURE_DIM] = hand_norm
+            else:
+                feat[HAND_FEATURE_DIM:FEATURE_DIM] = hand_norm
         else:
             score0 = float(res.handedness[0][0].score) if (res.handedness and len(res.handedness) > 0 and len(res.handedness[0]) > 0) else 0.85
             score1 = float(res.handedness[1][0].score) if (res.handedness and len(res.handedness) > 1 and len(res.handedness[1]) > 0) else 0.85
