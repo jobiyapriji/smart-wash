@@ -26,6 +26,16 @@ export function getWebSocketEndpoint() {
   if (import.meta.env?.VITE_WS_URL) return import.meta.env.VITE_WS_URL;
   if (window.__SMARTWASH_CONFIG__?.wsUrl) return window.__SMARTWASH_CONFIG__.wsUrl;
 
+  // Derive WebSocket URL from VITE_API_URL if provided (e.g. https://api.render.com -> wss://api.render.com/ws_model)
+  if (import.meta.env?.VITE_API_URL) {
+    const rawApi = String(import.meta.env.VITE_API_URL).trim();
+    if (rawApi) {
+      const wsProto = rawApi.startsWith('https') ? 'wss:' : 'ws:';
+      const cleanHost = rawApi.replace(/^https?:\/\//, '').replace(/\/$/, '');
+      return `${wsProto}//${cleanHost}/ws_model`;
+    }
+  }
+
   const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
   const hostname = window.location.hostname || 'localhost';
   const port = window.location.port;

@@ -57,12 +57,25 @@ except Exception as e:
     logger.warning(f"Legacy YOLO fallback not loaded: {e}")
     infr = None
 
-allowed_origins_env = os.getenv("CORS_ORIGINS", "*")
-origins = [origin.strip() for origin in allowed_origins_env.split(",") if origin.strip()]
+allowed_origins_env = os.getenv("CORS_ORIGINS") or os.getenv("ALLOWED_ORIGINS", "*")
+parsed_origins = [origin.strip() for origin in allowed_origins_env.split(",") if origin.strip()]
+
+default_origins = [
+    "http://localhost:3000",
+    "http://localhost:3002",
+    "http://127.0.0.1:3000",
+    "http://127.0.0.1:3002",
+]
+
+if "*" in parsed_origins or not parsed_origins:
+    origins = ["*"]
+else:
+    origins = list(set(parsed_origins + default_origins))
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins if origins else ["*"],
+    allow_origins=origins,
+    allow_origin_regex=r"^https?://([a-zA-Z0-9-]+\.)*vercel\.app(:\d+)?$",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -172,5 +185,67 @@ async def readiness():
         "classes": classes,
         "uptime_seconds": round(time.time() - START_TIME, 2)
     }
+
+TTS_VOICES = {
+    "ml": "ml-IN-SobhanaNeural",
+    "en": "en-IN-NeerjaNeural",
+    "hi": "hi-IN-SwaraNeural"
+}
+tts_cache = {}
+
+@app.get("/api/tts")
+async def text_to_speech(text: str, lang: str = "ml"):
+    """
+    Dynamic Text-To-Speech endpoint providing high-fidelity neural voice synthesis
+    for languages without native browser TTS voices (e.g., Malayalam ml-IN on Windows).
+    """
+    from fastapi.responses import Response
+
+    if not text or not text.strip():
+        return Response(status_code=400, content="Missing text")
+
+    clean_text = text.strip()
+    target_lang = lang.lower().split("-")[0]
+    voice = TTS_VOICES.get(target_lang, TTS_VOICES.get(lang.lower(), "ml-IN-SobhanaNeural"))
+
+    cache_key = f"{voice}:{clean_text}"
+    if cache_key in tts_cache:
+        return Response(
+            content=tts_cache[cache_key],
+            media_type="audio/mpeg",
+            headers={"Cache-Control": "public, max-age=86400"}
+        )
+
+    try:
+        import edge_tts
+        communicate = edge_tts.Communicate(clean_text, voice)
+        chunks = []
+        async for chunk in communicate.stream():
+            if chunk["type"] == "audio":
+                chunks.append(chunk["data"])
+        audio_data = b"".join(chunks)
+
+        if audio_data:
+            if len(tts_cache) > 100:
+                tts_cache.pop(next(iter(tts_cache)))
+            tts_cache[cache_key] = audio_data
+            return Response(
+                content=audio_data,
+                media_type="audio/mpeg",
+                headers={"Cache-Control": "public, max-age=86400"}
+            )
+        else:
+            return Response(status_code=500, content="Empty audio generated")
+    except Exception as e:
+        logger.error(f"TTS synthesis failed for '{clean_text}' ({voice}): {e}")
+        return Response(status_code=500, content=f"TTS synthesis error: {e}")
+
+if __name__ == "__main__":
+    import uvicorn
+    port = int(os.getenv("PORT", 4550))
+    host = os.getenv("HOST", "0.0.0.0")
+    logger.info(f"Starting SMART WASH backend on {host}:{port}")
+    uvicorn.run("backend.main:app", host=host, port=port, reload=False)
+
 
 

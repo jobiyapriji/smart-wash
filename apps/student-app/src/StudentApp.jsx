@@ -227,11 +227,7 @@ export function StudentKioskApp({ useMock = false }) {
     if (state.currentState === KIOSK_STATES.UNKNOWN_STUDENT) {
       if (!hasSpokenUnknownRef.current) {
         hasSpokenUnknownRef.current = true;
-        speak(
-          'unknown_person_audio',
-          lang,
-          `${t('unknown_person_title')}. ${t('unknown_person_body')}`
-        );
+        speak('unknown_person_audio', lang);
       }
       if (!hasRecordedUnknownRef.current) {
         hasRecordedUnknownRef.current = true;
