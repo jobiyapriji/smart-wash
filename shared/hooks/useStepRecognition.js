@@ -20,31 +20,88 @@ import {
   isMergedHand
 } from '../services/handLandmarkService.js';
 
-// Helper to resolve the correct WebSocket endpoint dynamically across dev, Docker, and LAN kiosk setups
-export function getWebSocketEndpoint() {
-  if (typeof window === 'undefined') return 'ws://localhost:4550/ws_model';
-  if (import.meta.env?.VITE_WS_URL) return import.meta.env.VITE_WS_URL;
-  if (window.__SMARTWASH_CONFIG__?.wsUrl) return window.__SMARTWASH_CONFIG__.wsUrl;
+/**
+ * Helper to resolve the correct WebSocket endpoint dynamically across dev, Docker, LAN, and HTTPS production.
+ * 
+ * Rules:
+ * 1. Explicit VITE_WS_URL takes highest priority (upgraded to wss:// if page is HTTPS).
+ * 2. If VITE_API_URL is configured, derives WebSocket URL (e.g. https://api.render.com -> wss://api.render.com/ws_model).
+ * 3. Enforces WSS on HTTPS pages to prevent mixed-content browser errors.
+ * 4. Preserves ws:// on localhost / HTTP for local development.
+ * 5. Appends /ws_model path if omitted.
+ * 
+ * @param {Object} [customConfig] Optional override config for testing { wsUrl, apiUrl, windowObj }
+ * @returns {string} The resolved WebSocket URL
+ */
+export function getWebSocketEndpoint(customConfig = null) {
+  const win = customConfig?.windowObj !== undefined 
+    ? customConfig.windowObj 
+    : (typeof window !== 'undefined' ? window : null);
 
-  // Derive WebSocket URL from VITE_API_URL if provided (e.g. https://api.render.com -> wss://api.render.com/ws_model)
-  if (import.meta.env?.VITE_API_URL) {
-    const rawApi = String(import.meta.env.VITE_API_URL).trim();
-    if (rawApi) {
-      const wsProto = rawApi.startsWith('https') ? 'wss:' : 'ws:';
-      const cleanHost = rawApi.replace(/^https?:\/\//, '').replace(/\/$/, '');
-      return `${wsProto}//${cleanHost}/ws_model`;
+  const rawWsUrl = customConfig?.wsUrl !== undefined
+    ? customConfig.wsUrl
+    : (
+        (typeof import.meta !== 'undefined' && import.meta.env?.VITE_WS_URL) ||
+        win?.__SMARTWASH_CONFIG__?.wsUrl ||
+        ''
+      );
+
+  const rawApiUrl = customConfig?.apiUrl !== undefined
+    ? customConfig.apiUrl
+    : (
+        (typeof import.meta !== 'undefined' && import.meta.env?.VITE_API_URL) ||
+        win?.__SMARTWASH_CONFIG__?.apiUrl ||
+        ''
+      );
+
+  const isHttps = win?.location?.protocol === 'https:';
+
+  // Helper to ensure endpoint ends with /ws_model
+  const normalizeWsPath = (urlStr) => {
+    const trimmed = String(urlStr || '').trim().replace(/\/$/, '');
+    if (!trimmed) return '';
+    return trimmed.endsWith('/ws_model') ? trimmed : `${trimmed}/ws_model`;
+  };
+
+  // 1. Explicit WebSocket URL override (VITE_WS_URL)
+  if (rawWsUrl && String(rawWsUrl).trim()) {
+    let resolved = String(rawWsUrl).trim();
+    // If on HTTPS, enforce wss: protocol to prevent browser "insecure WebSocket" error
+    if (isHttps) {
+      if (resolved.startsWith('ws://')) {
+        resolved = 'wss://' + resolved.slice(5);
+      } else if (!resolved.startsWith('wss://')) {
+        resolved = 'wss://' + resolved.replace(/^https?:\/\//, '');
+      }
     }
+    return normalizeWsPath(resolved);
   }
 
-  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-  const hostname = window.location.hostname || 'localhost';
-  const port = window.location.port;
+  // 2. Derive WebSocket URL from VITE_API_URL
+  if (rawApiUrl && String(rawApiUrl).trim()) {
+    const rawApi = String(rawApiUrl).trim();
+    // In HTTPS production, always enforce wss:
+    // In HTTP dev, use wss: if API is https:, otherwise ws:
+    const wsProto = isHttps || rawApi.startsWith('https') ? 'wss:' : 'ws:';
+    const cleanHost = rawApi.replace(/^(?:https?|wss?):\/\//, '').replace(/\/$/, '');
+    return normalizeWsPath(`${wsProto}//${cleanHost}`);
+  }
+
+  // 3. Fallback when neither VITE_WS_URL nor VITE_API_URL is configured
+  if (!win) {
+    return 'ws://localhost:4550/ws_model';
+  }
+
+  const protocol = isHttps ? 'wss:' : 'ws:';
+  const hostname = win.location?.hostname || 'localhost';
+  const port = win.location?.port;
 
   // Behind reverse proxy (port 80 or 443, standard production school deployment)
   if (!port || port === '80' || port === '443') {
-    return `${protocol}//${window.location.host}/ws_model`;
+    return `${protocol}//${win.location?.host || hostname}/ws_model`;
   }
-  // Standalone dev server (Vite on 3000, backend on 4550)
+
+  // Standalone dev server (e.g. Vite on 3000, backend on 4550)
   return `${protocol}//${hostname}:4550/ws_model`;
 }
 
@@ -163,6 +220,9 @@ export function useStepRecognition({
 
   // WebSocket Connection to Backend YOLO Model
   useEffect(() => {
+    let isDisposed = false;
+    let reconnectTimeout = null;
+
     if (!enabled) {
       if (wsRef.current) {
         wsRef.current.close();
@@ -176,7 +236,30 @@ export function useStepRecognition({
     const connectWebSocket = () => {
       const endpoint = getWebSocketEndpoint();
       console.log('[DIAG:WS] Connecting to backend at:', endpoint);
-      const ws = new WebSocket(endpoint);
+
+      const isHttpsPage = typeof window !== 'undefined' && window.location?.protocol === 'https:';
+      const isLocalhostEndpoint = endpoint.includes('localhost') || endpoint.includes('127.0.0.1');
+      if (isHttpsPage && isLocalhostEndpoint) {
+        console.warn(
+          '[SMART WASH:WS] Running on HTTPS (' + (window.location?.origin || 'https') + 
+          ') with localhost WebSocket (' + endpoint + '). ' +
+          'Live handwashing recognition requires a deployed backend over WSS. ' +
+          'Please set VITE_API_URL or VITE_WS_URL in your Vercel project settings.'
+        );
+      }
+
+      let ws;
+      try {
+        ws = new WebSocket(endpoint);
+      } catch (err) {
+        console.warn('[DIAG:WS] Failed to construct WebSocket for endpoint:', endpoint, err);
+        setTelemetry(prev => ({ ...prev, serverStatus: 'ERROR' }));
+        setIsProcessing(false);
+        if (!isDisposed && enabled) {
+          reconnectTimeout = setTimeout(connectWebSocket, 4000);
+        }
+        return;
+      }
 
       ws.onopen = () => {
         setIsProcessing(true);
@@ -219,8 +302,8 @@ export function useStepRecognition({
         console.log('[DIAG:WS] WebSocket connection closed, reconnecting in 2s...');
         setIsProcessing(false);
         setTelemetry(prev => ({ ...prev, serverStatus: 'RECONNECTING' }));
-        if (enabled) {
-          setTimeout(connectWebSocket, 2000);
+        if (!isDisposed && enabled) {
+          reconnectTimeout = setTimeout(connectWebSocket, 2000);
         }
       };
 
@@ -230,6 +313,8 @@ export function useStepRecognition({
     connectWebSocket();
 
     return () => {
+      isDisposed = true;
+      if (reconnectTimeout) clearTimeout(reconnectTimeout);
       if (wsRef.current) {
         wsRef.current.close();
         wsRef.current = null;

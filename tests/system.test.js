@@ -294,5 +294,92 @@ describe('Phase 6: Production WebSocket Resolution', () => {
     // Clean up
     delete globalThis.window;
   });
+
+  it('converts HTTPS API URLs to secure WSS and prevents mixed-content errors in production', async () => {
+    const { getWebSocketEndpoint } = await import('../shared/hooks/useStepRecognition.js');
+
+    const httpsWindow = {
+      location: { protocol: 'https:', hostname: 'smart-wash.vercel.app', port: '', host: 'smart-wash.vercel.app' }
+    };
+
+    // 1. Derives wss:// from HTTPS VITE_API_URL
+    const ep1 = getWebSocketEndpoint({
+      apiUrl: 'https://smart-wash-backend.onrender.com',
+      windowObj: httpsWindow
+    });
+    expect(ep1).toBe('wss://smart-wash-backend.onrender.com/ws_model');
+
+    // 2. Automatically converts accidental http:// VITE_API_URL to wss:// when on HTTPS
+    const ep2 = getWebSocketEndpoint({
+      apiUrl: 'http://smart-wash-backend.onrender.com',
+      windowObj: httpsWindow
+    });
+    expect(ep2).toBe('wss://smart-wash-backend.onrender.com/ws_model');
+
+    // 3. Automatically upgrades accidental ws:// VITE_WS_URL to wss:// when on HTTPS
+    const ep3 = getWebSocketEndpoint({
+      wsUrl: 'ws://smart-wash-backend.onrender.com/ws_model',
+      windowObj: httpsWindow
+    });
+    expect(ep3).toBe('wss://smart-wash-backend.onrender.com/ws_model');
+
+    // 4. Handles domain without protocol on HTTPS
+    const ep4 = getWebSocketEndpoint({
+      apiUrl: 'smart-wash-backend.onrender.com',
+      windowObj: httpsWindow
+    });
+    expect(ep4).toBe('wss://smart-wash-backend.onrender.com/ws_model');
+
+    // 5. Normalizes trailing slashes and appends /ws_model
+    const ep5 = getWebSocketEndpoint({
+      apiUrl: 'https://smart-wash-backend.onrender.com/',
+      windowObj: httpsWindow
+    });
+    expect(ep5).toBe('wss://smart-wash-backend.onrender.com/ws_model');
+
+    // 6. Explicit VITE_WS_URL override takes precedence over VITE_API_URL
+    const ep6 = getWebSocketEndpoint({
+      wsUrl: 'wss://dedicated-ws.example.com/custom_path/ws_model',
+      apiUrl: 'https://smart-wash-backend.onrender.com',
+      windowObj: httpsWindow
+    });
+    expect(ep6).toBe('wss://dedicated-ws.example.com/custom_path/ws_model');
+
+    // 7. Missing production config on HTTPS defaults to wss:// (never insecure ws://)
+    const ep7 = getWebSocketEndpoint({
+      windowObj: httpsWindow
+    });
+    expect(ep7).toBe('wss://smart-wash.vercel.app/ws_model');
+    expect(ep7.startsWith('wss://')).toBe(true);
+  });
+
+  it('preserves ws:// and local backend in development HTTP environments', async () => {
+    const { getWebSocketEndpoint } = await import('../shared/hooks/useStepRecognition.js');
+
+    const httpDevWindow = {
+      location: { protocol: 'http:', hostname: 'localhost', port: '3000', host: 'localhost:3000' }
+    };
+
+    // 1. Preserves local ws:// on localhost
+    const ep1 = getWebSocketEndpoint({
+      apiUrl: 'http://localhost:4550',
+      windowObj: httpDevWindow
+    });
+    expect(ep1).toBe('ws://localhost:4550/ws_model');
+
+    // 2. Preserves explicit ws:// in local dev
+    const ep2 = getWebSocketEndpoint({
+      wsUrl: 'ws://127.0.0.1:4550/ws_model',
+      windowObj: httpDevWindow
+    });
+    expect(ep2).toBe('ws://127.0.0.1:4550/ws_model');
+
+    // 3. In HTTP dev, if remote API uses https://, derives wss://
+    const ep3 = getWebSocketEndpoint({
+      apiUrl: 'https://smart-wash-backend.onrender.com',
+      windowObj: httpDevWindow
+    });
+    expect(ep3).toBe('wss://smart-wash-backend.onrender.com/ws_model');
+  });
 });
 
