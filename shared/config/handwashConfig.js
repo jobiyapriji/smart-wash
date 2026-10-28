@@ -83,9 +83,27 @@ export const HANDWASH_CONFIG = {
     GOOD_TRY: { min: 40, max: 69, label: 'Good try' },
     TRY_AGAIN: { min: 0, max: 39, label: "Let's try again" }
   },
+  SCORING_WEIGHTS: {
+    MAX_COMPLETION_POINTS: 60,       // 10 points per completed WHO step (up to 60)
+    MAX_TIME_POINTS: 20,             // Up to 20 points for proper duration (6s/step target)
+    MAX_TECHNIQUE_POINTS: 20,        // Up to 20 points for confidence and steady cadence
+    POINTS_PER_STEP: 10,             // Points awarded per verified completed step
+    TARGET_STEP_DURATION_MS: 6000,   // 6.0 seconds active scrub target per step
+    TARGET_TOTAL_SCRUB_MS: 36000,    // 36 seconds total scrub time target
+    CONFIDENCE_HIGH_THRESHOLD: 0.85, // Confidence >= 0.85 earns full confidence ratio
+    CONFIDENCE_MIN_THRESHOLD: 0.60,  // Confidence < 0.60 earns 0 confidence ratio
+    PAUSE_PENALTY_POINTS: 1.5,       // Penalty per pause / interruption event
+    INVALID_POSE_PENALTY_POINTS: 0.5,// Penalty per invalid pose occurrence
+    OUT_OF_ORDER_PENALTY: 10,        // Penalty per step sequence inversion
+    BONUS_MIN_SCORE: 70,             // Minimum score required for hygiene bonus
+    BONUS_MIN_STEPS: 4,              // Minimum verified steps required for hygiene bonus
+    BONUS_STANDARD: 10,              // +10 pts compliance bonus
+    BONUS_SUPERSTAR: 15              // +15 pts mastery bonus
+  },
   BONUS_MIN_SCORE: 70,                // Score must be >= 70 to get hygiene bonus
   BONUS_MIN_STEPS: 4,                 // Must complete >= 4 verified steps to get hygiene bonus
-  BONUS_POINTS: 50,
+  BONUS_POINTS: 10,                   // Documented standard hygiene bonus points (+10 pts)
+  BONUS_POINTS_SUPERSTAR: 15,         // Superstar hygiene bonus points (+15 pts)
   ENABLE_ADAPTIVE_FUSION: true        // Enables Adaptive Ensemble Fusion in kiosk live recognition
 };
 

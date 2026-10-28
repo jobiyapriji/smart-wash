@@ -500,12 +500,14 @@ export function useStepRecognition({
       if (duration < 500) {
         console.debug('[SMART‑WASH] Ignored rapid step completion (<500ms)');
       } else if (onStepCompletedRef.current) {
-        onStepCompletedRef.current({
+        const stepRecord = (engineRef.current && engineRef.current.getStepRecord(currentTarget)) || {
           stepNumber: currentTarget,
           durationMs: duration,
+          activeTimeMs: 6000,
           avgConfidence: result.confidence,
           completed: true
-        });
+        };
+        onStepCompletedRef.current(stepRecord);
       }
       setCompletedSteps(prev => (prev.includes(currentTarget) ? prev : [...prev, currentTarget]));
     }
@@ -522,7 +524,8 @@ export function useStepRecognition({
       finishedRef.current = true;
       console.log('[SMART‑WASH] Detected finish. Completed steps:', result.completedSteps);
       if (onFinishWashingRef.current) {
-        onFinishWashingRef.current(result.completedSteps);
+        const finalRecords = engineRef.current ? engineRef.current.getStepRecords() : result.completedSteps;
+        onFinishWashingRef.current(finalRecords);
       }
     }
   }, []);

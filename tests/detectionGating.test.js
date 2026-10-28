@@ -173,19 +173,23 @@ describe('TEST 6: Score 2/100 Tier & Bonus Consistency', () => {
   });
 
   it('awards bonus ONLY when score >= 70 AND >= 4 verified steps', () => {
-    // Score >= 70 but only 3 steps: NO bonus
+    // Score < 70 (only 3 steps): NO bonus
     const threeSteps = calculateHandwashScore([1, 2, 3], []);
-    // base: 3/6 = 50 -> score 50
     expect(threeSteps.bonusAwarded).toBe(false);
 
-    // Score >= 70 and 4 steps: BONUS awarded
-    const fourSteps = calculateHandwashScore([1, 2, 3, 4], []);
-    // base: 4/6 = 67 -> wait, 4/6 is 67. With 5 steps: 5/6 = 83.
-    const fiveSteps = calculateHandwashScore([1, 2, 3, 4, 5], []);
+    // 5 steps with verified metrics: Score 83 (>= 70) and 5 steps (>= 4) -> BONUS awarded
+    const stepWithMetrics = (num) => ({
+      stepNumber: num,
+      activeTimeMs: 6000,
+      durationMs: 6000,
+      avgConfidence: 0.90,
+      pauseCount: 0
+    });
+    const fiveSteps = calculateHandwashScore([1, 2, 3, 4, 5].map(stepWithMetrics), []);
     expect(fiveSteps.totalScore).toBe(83);
     expect(fiveSteps.grade).toBe('Great job');
     expect(fiveSteps.bonusAwarded).toBe(true);
-    expect(fiveSteps.bonusPoints).toBe(50);
+    expect(fiveSteps.bonusPoints).toBe(10);
   });
 });
 

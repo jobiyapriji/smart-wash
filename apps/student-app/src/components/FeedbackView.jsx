@@ -7,6 +7,7 @@ import { Star, Award, CheckCircle2, RotateCcw } from 'lucide-react';
 
 export function FeedbackView({
   score = 0,
+  scoreBreakdown = null,
   student = null,
   completedSteps = [],
   onReset = null,
@@ -21,10 +22,18 @@ export function FeedbackView({
   const isGoodTry = score >= 40 && score < 70;
   const isTryAgain = score < 40;
 
-  // Rule 7: Bonus awarded ONLY if score >= 70 AND >= 4 steps verified
-  const bonusAwarded = score >= HANDWASH_CONFIG.BONUS_MIN_SCORE && 
-                       completedSteps.length >= HANDWASH_CONFIG.BONUS_MIN_STEPS;
-  const bonusPoints = bonusAwarded ? HANDWASH_CONFIG.BONUS_POINTS : 0;
+  // Documented Hygiene Bonus rule: Awarded ONLY if score >= 70 AND >= 4 steps verified
+  const bonusAwarded = scoreBreakdown?.bonusAwarded !== undefined
+    ? scoreBreakdown.bonusAwarded
+    : (score >= HANDWASH_CONFIG.BONUS_MIN_SCORE && completedSteps.length >= HANDWASH_CONFIG.BONUS_MIN_STEPS);
+
+  const bonusPoints = scoreBreakdown?.bonusPoints !== undefined
+    ? scoreBreakdown.bonusPoints
+    : (bonusAwarded
+        ? (isSuperstar && completedSteps.length === 6
+            ? (HANDWASH_CONFIG.BONUS_POINTS_SUPERSTAR || 15)
+            : (HANDWASH_CONFIG.BONUS_POINTS || 10))
+        : 0);
 
   // Spoken audio feedback on mount
   useEffect(() => {
@@ -243,6 +252,28 @@ export function FeedbackView({
           </div>
         </div>
       </div>
+
+      {/* Performance Breakdown Pill */}
+      {scoreBreakdown && scoreBreakdown.completionScore !== undefined && (
+        <div style={{
+          display: 'flex',
+          gap: '10px',
+          fontSize: '11px',
+          fontWeight: 700,
+          color: '#64748B',
+          background: 'rgba(255, 255, 255, 0.85)',
+          padding: '4px 14px',
+          borderRadius: '9999px',
+          border: '1.5px solid #CBD5E1',
+          fontFamily: 'Outfit, sans-serif'
+        }}>
+          <span>Steps: {scoreBreakdown.completionScore}/60</span>
+          <span>•</span>
+          <span>Time: {scoreBreakdown.timeScore}/20</span>
+          <span>•</span>
+          <span>Technique: {scoreBreakdown.techniqueScore}/20</span>
+        </div>
+      )}
 
       {/* Auto Reset Footer */}
       <div style={{ marginTop: '8px' }}>

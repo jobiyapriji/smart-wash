@@ -136,7 +136,12 @@ export function StudentKioskApp({ useMock = false }) {
     KIOSK_STATES.FEEDBACK
   ].includes(state.currentState) ? (state.student || null) : null;
 
+  const resetTrackerRef = useRef(null);
+
   const handleProceedWithStudent = useCallback(async (student, modeOverride = null) => {
+    if (resetTrackerRef.current) {
+      resetTrackerRef.current();
+    }
     const sessionMode = modeOverride || (student?.isTest ? 'test' : detectionMode);
     try {
       const result = await createSession(student.studentId, student.name, 'face_recognition', student.classId || 'UNKNOWN', sessionMode);
@@ -290,12 +295,14 @@ export function StudentKioskApp({ useMock = false }) {
     if (Array.isArray(finalEngineSteps) && finalEngineSteps.length > 0) {
       const existingStepNums = new Set(stepsToScore.map(s => typeof s === 'object' ? s.stepNumber : s));
       const merged = [...stepsToScore];
-      for (const stepNum of finalEngineSteps) {
+      for (const item of finalEngineSteps) {
+        const stepNum = typeof item === 'object' ? item.stepNumber : item;
         if (!existingStepNums.has(stepNum)) {
-          merged.push({
+          merged.push(typeof item === 'object' ? item : {
             stepNumber: stepNum,
             durationMs: 6000,
-            avgConfidence: 0.95,
+            activeTimeMs: 6000,
+            avgConfidence: 0.85,
             completed: true
           });
           existingStepNums.add(stepNum);
@@ -308,7 +315,7 @@ export function StudentKioskApp({ useMock = false }) {
     const computedScore = scoreBreakdown.totalScore;
 
     // Rule 7: Only save to Firebase if >= 1 verified step, >= 10s scrub time, and NOT a dev test session
-    const totalScrubSec = stepsToScore.reduce((acc, s) => acc + (typeof s === 'object' ? (s.durationMs || 0) : 6000), 0) / 1000;
+    const totalScrubSec = stepsToScore.reduce((acc, s) => acc + (typeof s === 'object' ? (s.activeTimeMs || s.durationMs || 0) : 6000), 0) / 1000;
     const isTestMode = detectionMode === 'test' || state.student?.isTest;
 
     const shouldSave = stepsToScore.length >= HANDWASH_CONFIG.MIN_VERIFIED_STEPS_TO_SAVE && 
@@ -336,7 +343,8 @@ export function StudentKioskApp({ useMock = false }) {
       payload: {
         score: computedScore,
         steps: stepsToScore,
-        sessionDurationMs
+        sessionDurationMs,
+        scoreBreakdown
       }
     });
   }, [state.completedSteps, state.sessionId, state.student, detectionMode]);
@@ -368,6 +376,7 @@ export function StudentKioskApp({ useMock = false }) {
     onFinishWashing: handleFinishWashing
   });
 
+  resetTrackerRef.current = resetTracker;
   missedStepsRef.current = missedSteps;
 
   const handleResetToIdle = useCallback(() => {
@@ -931,6 +940,7 @@ export function StudentKioskApp({ useMock = false }) {
           {state.currentState === KIOSK_STATES.FEEDBACK && (
             <FeedbackView
               score={state.finalScore}
+              scoreBreakdown={state.scoreBreakdown}
               student={state.student}
               completedSteps={state.completedSteps}
               sessionDurationMs={state.sessionDurationMs}

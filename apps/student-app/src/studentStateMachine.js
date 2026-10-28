@@ -24,6 +24,7 @@ export const INITIAL_KIOSK_STATE = {
   sessionId: null,
   completedSteps: [],     // Array of { stepNumber, durationMs, avgConfidence, completed }
   finalScore: 0,
+  scoreBreakdown: null,
   startTime: null,
   endTime: null,
   error: null,
@@ -42,6 +43,9 @@ export function kioskReducer(state, action) {
     case 'STUDENT_IDENTIFIED':
       return {
         ...state,
+        completedSteps: [],
+        finalScore: 0,
+        scoreBreakdown: null,
         currentState: KIOSK_STATES.READY,
         student: action.payload.student,
         sessionId: action.payload.sessionId || `session_${Date.now()}`
@@ -104,7 +108,8 @@ export function kioskReducer(state, action) {
         currentState: KIOSK_STATES.FEEDBACK,
         finalScore: action.payload.score,
         completedSteps: action.payload.steps || state.completedSteps,
-        sessionDurationMs: action.payload.sessionDurationMs || null
+        sessionDurationMs: action.payload.sessionDurationMs || null,
+        scoreBreakdown: action.payload.scoreBreakdown || null
       };
 
     case 'SELECT_LANGUAGE':

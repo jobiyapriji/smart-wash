@@ -60,27 +60,39 @@ describe('Phase 2: Temporal Debounce & Strict Step Crediting (Rule 3)', () => {
 });
 
 describe('Phase 4: Deterministic Scoring Calculation (Rule 7)', () => {
+  const createStep = (stepNumber, activeTimeMs = 6000, avgConfidence = 0.90) => ({
+    stepNumber,
+    activeTimeMs,
+    durationMs: activeTimeMs,
+    avgConfidence,
+    pauseCount: 0,
+    invalidPoseFrames: 0,
+    completed: true
+  });
+
   it('awards 100 points for a perfect sequence', () => {
-    const completed = [1, 2, 3, 4, 5, 6];
+    const completed = [1, 2, 3, 4, 5, 6].map(s => createStep(s));
     const missed = [];
     const result = calculateHandwashScore(completed, missed);
     expect(result.totalScore).toBe(100);
     expect(result.grade).toBe('Superstar');
     expect(result.bonusAwarded).toBe(true);
+    expect(result.bonusPoints).toBe(15);
   });
 
-  it('deducts 15 points per missed step', () => {
-    const completed = [2, 3, 4, 5, 6];
+  it('deducts points for missed steps and lower completion', () => {
+    const completed = [2, 3, 4, 5, 6].map(s => createStep(s));
     const missed = [1];
     const result = calculateHandwashScore(completed, missed);
-    expect(result.totalScore).toBe(68);
-    expect(result.grade).toBe('Good try');
-    // Rule 7: Score < 70 never gets hygiene bonus
-    expect(result.bonusAwarded).toBe(false);
+    expect(result.totalScore).toBe(78);
+    expect(result.grade).toBe('Great job');
+    // Qualifies for standard bonus (score >= 70, steps >= 4)
+    expect(result.bonusAwarded).toBe(true);
+    expect(result.bonusPoints).toBe(10);
   });
 
   it('deducts 10 points per out-of-order violation', () => {
-    const completed = [1, 3, 2, 4, 5, 6];
+    const completed = [1, 3, 2, 4, 5, 6].map(s => createStep(s));
     const missed = [];
     const result = calculateHandwashScore(completed, missed);
     expect(result.totalScore).toBe(90);

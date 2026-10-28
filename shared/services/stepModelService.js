@@ -115,6 +115,9 @@ export class StepRecognitionEngine {
     this.currentStep = 1;
     this.completedSteps = [];
     this.missedSteps = [];
+    this.completedStepRecords = [];
+    this.stepMetrics = {};
+    this.pauseStartTime = null;
     this.activeTimeMs = 0;
     this.lastFrameTime = null;
     this.lastCriteriaMetTime = null;
@@ -337,6 +340,22 @@ export class StepRecognitionEngine {
     // 2. While running, accumulate real elapsed dt (actual ms since last frame).
     // 3. When conditions fail, allow a 500 ms grace window before pausing.
     // 4. A pause keeps accumulated progress; it never resets it.
+    // Initialize step metrics if not present
+    if (this.currentStep <= 6 && !this.stepMetrics[this.currentStep]) {
+      this.stepMetrics[this.currentStep] = {
+        stepNumber: this.currentStep,
+        activeTimeMs: 0,
+        wallClockTimeMs: 0,
+        stepStartTime: now,
+        confidenceSamples: [],
+        pauseCount: 0,
+        pauseDurationMs: 0,
+        invalidPoseFrames: 0,
+        handsMissingFrames: 0,
+        completed: false
+      };
+    }
+
     if (allCriteriaMet) {
       this.lastCriteriaMetTime = now;
 
@@ -351,6 +370,12 @@ export class StepRecognitionEngine {
           this.failingReason = geometryPassed && !classifierPassed
             ? `ALL_CONDITIONS_MET (ADAPTIVE_GEOMETRY_FUSION: ${geometryName})`
             : detailedReason;
+          if (this.pauseStartTime) {
+            if (this.stepMetrics[this.currentStep]) {
+              this.stepMetrics[this.currentStep].pauseDurationMs += Math.max(0, now - this.pauseStartTime);
+            }
+            this.pauseStartTime = null;
+          }
         } else {
           this.graceState = 'DEBOUNCING';
           this.statusReason = `Debouncing (${this.debounceStreak}/${this.debounceFramesRequired})`;
@@ -368,6 +393,16 @@ export class StepRecognitionEngine {
         if (this.lastFrameTime) {
           const delta = Math.min(350, Math.max(0, now - this.lastFrameTime));
           this.activeTimeMs += delta;
+          if (this.stepMetrics[this.currentStep]) {
+            this.stepMetrics[this.currentStep].activeTimeMs = this.activeTimeMs;
+            this.stepMetrics[this.currentStep].confidenceSamples.push(confidence);
+          }
+        }
+        if (this.pauseStartTime) {
+          if (this.stepMetrics[this.currentStep]) {
+            this.stepMetrics[this.currentStep].pauseDurationMs += Math.max(0, now - this.pauseStartTime);
+          }
+          this.pauseStartTime = null;
         }
         this.lastFrameTime = now;
 
@@ -376,9 +411,30 @@ export class StepRecognitionEngine {
           if (!this.completedSteps.includes(this.currentStep)) {
             this.completedSteps.push(this.currentStep);
           }
+          if (this.stepMetrics[this.currentStep]) {
+            const m = this.stepMetrics[this.currentStep];
+            m.completed = true;
+            m.activeTimeMs = this.activeTimeMs;
+            m.wallClockTimeMs = m.stepStartTime ? Math.max(m.activeTimeMs, now - m.stepStartTime) : m.activeTimeMs;
+            const avgConf = m.confidenceSamples.length 
+              ? m.confidenceSamples.reduce((a, b) => a + b, 0) / m.confidenceSamples.length 
+              : confidence;
+            m.avgConfidence = Number(avgConf.toFixed(3));
+            this.completedStepRecords.push({
+              stepNumber: this.currentStep,
+              activeTimeMs: Math.round(m.activeTimeMs),
+              durationMs: Math.round(m.wallClockTimeMs),
+              avgConfidence: m.avgConfidence,
+              pauseCount: m.pauseCount || 0,
+              pauseDurationMs: Math.round(m.pauseDurationMs || 0),
+              invalidPoseFrames: m.invalidPoseFrames || 0,
+              completed: true
+            });
+          }
           this.activeTimeMs = 0;
           this.lastFrameTime = null;
           this.lastCriteriaMetTime = null;
+          this.pauseStartTime = null;
           this.debounceStreak = 0;
           this.isStepActive = false;
           this.graceState = 'IDLE';
@@ -386,7 +442,15 @@ export class StepRecognitionEngine {
         }
       }
     } else {
-      // Conditions not met on this frame: pause timer accumulation while preserving progress
+      // Conditions not met on this frame: track metrics & pause timer accumulation while preserving progress
+      if (this.stepMetrics[this.currentStep]) {
+        if (handsPresent && !stepSatisfied) {
+          this.stepMetrics[this.currentStep].invalidPoseFrames++;
+        } else if (!handsPresent) {
+          this.stepMetrics[this.currentStep].handsMissingFrames++;
+        }
+      }
+
       if (this.isStepActive) {
         const timeSinceMet = this.lastCriteriaMetTime ? (now - this.lastCriteriaMetTime) : Infinity;
 
@@ -399,6 +463,12 @@ export class StepRecognitionEngine {
           this.lastFrameTime = now;
         } else {
           // Grace window expired (>= 500ms): full pause, requires debounce to resume
+          if (!this.pauseStartTime) {
+            this.pauseStartTime = now;
+            if (this.stepMetrics[this.currentStep]) {
+              this.stepMetrics[this.currentStep].pauseCount++;
+            }
+          }
           this.graceState = 'PAUSED';
           this.isStepActive = false;
           this.debounceStreak = 0;
@@ -485,7 +555,45 @@ export class StepRecognitionEngine {
       mode: this.mode,
       geometryRulePassed: this.geometryRulePassed,
       geometryRuleName: this.geometryRuleName,
-      telemetryLog: this.telemetryLog
+      telemetryLog: this.telemetryLog,
+      stepRecords: this.getStepRecords()
+    };
+  }
+
+  getStepRecords() {
+    if (this.completedStepRecords.length > 0) {
+      return [...this.completedStepRecords];
+    }
+    return Object.values(this.stepMetrics).map(m => ({
+      stepNumber: m.stepNumber,
+      activeTimeMs: Math.round(m.activeTimeMs),
+      durationMs: Math.round(m.wallClockTimeMs || m.activeTimeMs),
+      avgConfidence: m.confidenceSamples.length 
+        ? Number((m.confidenceSamples.reduce((a, b) => a + b, 0) / m.confidenceSamples.length).toFixed(3))
+        : 0.85,
+      pauseCount: m.pauseCount || 0,
+      pauseDurationMs: Math.round(m.pauseDurationMs || 0),
+      invalidPoseFrames: m.invalidPoseFrames || 0,
+      completed: Boolean(m.completed)
+    }));
+  }
+
+  getStepRecord(stepNumber) {
+    const existing = this.completedStepRecords.find(r => r.stepNumber === stepNumber);
+    if (existing) return existing;
+    const m = this.stepMetrics[stepNumber];
+    if (!m) return null;
+    return {
+      stepNumber,
+      activeTimeMs: Math.round(m.activeTimeMs),
+      durationMs: Math.round(m.wallClockTimeMs || m.activeTimeMs),
+      avgConfidence: m.confidenceSamples.length
+        ? Number((m.confidenceSamples.reduce((a, b) => a + b, 0) / m.confidenceSamples.length).toFixed(3))
+        : 0.85,
+      pauseCount: m.pauseCount || 0,
+      pauseDurationMs: Math.round(m.pauseDurationMs || 0),
+      invalidPoseFrames: m.invalidPoseFrames || 0,
+      completed: Boolean(m.completed)
     };
   }
 
@@ -499,10 +607,14 @@ export class StepRecognitionEngine {
       if (!this.completedSteps.includes(this.currentStep)) {
         this.completedSteps.push(this.currentStep);
       }
+      if (this.stepMetrics[this.currentStep]) {
+        this.stepMetrics[this.currentStep].completed = true;
+      }
       this.currentStep++;
       this.activeTimeMs = 0;
       this.lastFrameTime = null;
       this.lastCriteriaMetTime = null;
+      this.pauseStartTime = null;
       this.debounceStreak = 0;
       this.isStepActive = false;
       this.graceState = 'IDLE';
@@ -523,6 +635,7 @@ export class StepRecognitionEngine {
     this.activeTimeMs = 0;
     this.lastFrameTime = null;
     this.lastCriteriaMetTime = null;
+    this.pauseStartTime = null;
     this.debounceStreak = 0;
     this.isStepActive = false;
     this.graceState = 'IDLE';
@@ -533,6 +646,9 @@ export class StepRecognitionEngine {
     this.currentStep = 1;
     this.completedSteps = [];
     this.missedSteps = [];
+    this.completedStepRecords = [];
+    this.stepMetrics = {};
+    this.pauseStartTime = null;
     this.activeTimeMs = 0;
     this.lastFrameTime = null;
     this.lastCriteriaMetTime = null;
@@ -545,6 +661,8 @@ export class StepRecognitionEngine {
     this.predictionHistory = [];
     this.failingReason = 'INITIALIZING';
     this.statusReason = 'No hands';
+    this.geometryRulePassed = false;
+    this.geometryRuleName = null;
   }
 }
 

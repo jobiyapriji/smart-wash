@@ -35,13 +35,14 @@ describe('Audit: 6 Steps Handwashing Process Verification', () => {
           handMovement: 0.12
         }, now);
         now += 100;
+        if (engine.currentStep > step) break;
       }
     }
 
     expect(engine.completedSteps).toEqual([1, 2, 3, 4, 5, 6]);
     expect(engine.currentStep).toBe(7);
 
-    const scoreResult = calculateHandwashScore(engine.completedSteps, []);
+    const scoreResult = calculateHandwashScore(engine.getStepRecords(), []);
     expect(scoreResult.totalScore).toBe(100);
     expect(scoreResult.grade).toBe('Superstar');
     expect(scoreResult.tier).toBe('SUPERSTAR');
