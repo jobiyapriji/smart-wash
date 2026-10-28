@@ -292,7 +292,9 @@ export class StepRecognitionEngine {
     this.geometryRuleName = geometryPassed ? geometryName : null;
 
     // RULE 3 & 4: Step validation (Classifier vs Angle-Invariant Landmark Geometry Fusion)
-    const stepMatch = mappedStep === this.currentStep || (this.currentStep === 3 && (mappedStep === 4 || mappedStep === 2) && geometryPassed);
+    const stepMatch = mappedStep === this.currentStep ||
+      (this.currentStep === 3 && (mappedStep === 4 || mappedStep === 2) && geometryPassed) ||
+      (this.currentStep === 4 && (mappedStep === 3 || mappedStep === 2) && geometryPassed);
     const confidenceCheck = confidence >= this.confidenceThreshold;
     const classifierPassed = stepMatch && confidenceCheck;
 

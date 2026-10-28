@@ -390,22 +390,14 @@ export function checkStep3FingersInterlaced(handsData = [], thresholds = HANDWAS
  * - STEP_4_RESTING_DIST: default 0.80
  */
 export function checkStep4BacksOfFingers(handsData = [], thresholds = HANDWASH_CONFIG.GEOMETRY_THRESHOLDS) {
-  if (!handsData || handsData.length < 2) return false;
-  const hA = handsData[0];
-  const hB = handsData[1];
-  if (!hA.landmarks || !hB.landmarks) return false;
+  if (!handsData || handsData.length === 0) return false;
 
-  const palmA = hA.palmCenter || computePalmCenter(hA.landmarks);
-  const palmB = hB.palmCenter || computePalmCenter(hB.landmarks);
-  const scaleA = hA.scale || computeHandScale(hA.landmarks);
-  const scaleB = hB.scale || computeHandScale(hB.landmarks);
-  if (!palmA || !palmB) return false;
-
-  const maxCurlRatio = thresholds?.STEP_4_CURL_RATIO ?? 0.85;
-  const maxRestingDist = thresholds?.STEP_4_RESTING_DIST ?? 0.80;
+  const maxCurlRatio = thresholds?.STEP_4_CURL_RATIO ?? 0.95;
+  const maxRestingDist = thresholds?.STEP_4_RESTING_DIST ?? 1.25;
 
   // Helper: Verifies true finger curling (tips curled inward toward wrist/palm)
   const isHandCurled = (landmarks, palm, scale) => {
+    if (!landmarks || landmarks.length < 21) return false;
     const wrist = landmarks[0];
     let curledCount = 0;
     // Pairs: [tip, pip] for Index (8,6), Middle (12,10), Ring (16,14), Pinky (20,18)
@@ -414,7 +406,7 @@ export function checkStep4BacksOfFingers(handsData = [], thresholds = HANDWASH_C
       if (landmarks[tipIdx] && landmarks[pipIdx]) {
         const tipToWrist = dist2D(landmarks[tipIdx], wrist);
         const pipToWrist = dist2D(landmarks[pipIdx], wrist);
-        if (tipToWrist <= pipToWrist * 1.15) {
+        if (tipToWrist <= pipToWrist * 1.25) {
           curledCount++;
         }
       }
@@ -426,13 +418,64 @@ export function checkStep4BacksOfFingers(handsData = [], thresholds = HANDWASH_C
     return curledCount >= 2 || avgCurlPassed;
   };
 
+  // Case A: Overlapping hands merged into 1 detected hand (locked/clasped fingers)
+  if (handsData.length === 1) {
+    const h = handsData[0];
+    if (!h.landmarks || h.landmarks.length < 21) return false;
+
+    const box = getHandBoundingBox(h.landmarks);
+    const handScale = h.scale || computeHandScale(h.landmarks);
+    const scaleRatio = box.width / Math.max(0.001, handScale);
+    const aspectRatio = box.width / Math.max(0.001, box.height);
+    const palm = h.palmCenter || computePalmCenter(h.landmarks);
+
+    // Merged hand from locked/interlocked fingers forms a wide, compact contour
+    if (isMergedHand(h.landmarks, handScale)) return true;
+    if (scaleRatio >= 0.65 && box.area >= 0.012) return true;
+    if (aspectRatio >= 0.75 && box.area >= 0.012) return true;
+    if (palm && isHandCurled(h.landmarks, palm, handScale) && box.area >= 0.010) return true;
+
+    return false;
+  }
+
+  // Case B: 2 detected hands
+  const hA = handsData[0];
+  const hB = handsData[1];
+  if (!hA.landmarks || !hB.landmarks) return false;
+
+  const palmA = hA.palmCenter || computePalmCenter(hA.landmarks);
+  const palmB = hB.palmCenter || computePalmCenter(hB.landmarks);
+  const scaleA = hA.scale || computeHandScale(hA.landmarks);
+  const scaleB = hB.scale || computeHandScale(hB.landmarks);
+  if (!palmA || !palmB) return false;
+
+  const avgScale = Math.max(0.01, (scaleA + scaleB) / 2);
+  const palmDist = dist2D(palmA, palmB);
+  const normalizedPalmDist = palmDist / avgScale;
+
+  const boxA = getHandBoundingBox(hA.landmarks);
+  const boxB = getHandBoundingBox(hB.landmarks);
+  const overlap = computeBoxOverlap(boxA, boxB);
+
   const isACurled = isHandCurled(hA.landmarks, palmA, scaleA);
   const isBCurled = isHandCurled(hB.landmarks, palmB, scaleB);
 
-  const aRestingOnB = isACurled && (dist2D(palmA, palmB) <= scaleB * maxRestingDist);
-  const bRestingOnA = isBCurled && (dist2D(palmB, palmA) <= scaleA * maxRestingDist);
+  // 1. One or both hands curled and in close proximity (resting on opposing palm/fingers)
+  const aRestingOnB = isACurled && (palmDist <= scaleB * maxRestingDist);
+  const bRestingOnA = isBCurled && (palmDist <= scaleA * maxRestingDist);
+  if (aRestingOnB || bRestingOnA) return true;
 
-  return aRestingOnB || bRestingOnA;
+  // 2. Overlapping hand bounding boxes with at least one curled hand or close palms
+  if (overlap >= 0.20 && (isACurled || isBCurled || normalizedPalmDist <= 1.15)) {
+    return true;
+  }
+
+  // 3. Hands in close clasp contact
+  if (normalizedPalmDist <= 0.95 && overlap >= 0.15) {
+    return true;
+  }
+
+  return false;
 }
 
 /**

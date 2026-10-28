@@ -505,6 +505,89 @@ describe('Steps 4, 5, 6 Geometry & Full 6-Step Sequence Transition', () => {
     expect(res.ruleName).toBe('Step 4 (Backs of Fingers)');
   });
 
+  it('validates Step 4 with a single merged hand from interlocked fingers', () => {
+    const mergedHand = {
+      landmarks: Array.from({ length: 21 }, (_, i) => ({
+        x: 0.50 + ((i % 5) - 2) * 0.05,
+        y: 0.50 + Math.floor(i / 5) * 0.04,
+        z: 0.01
+      })),
+      palmCenter: { x: 0.50, y: 0.50, z: 0.01 },
+      scale: 0.18
+    };
+
+    expect(checkStep4BacksOfFingers([mergedHand])).toBe(true);
+    const res = evaluateDryModeGeometry(4, [mergedHand], 0.08);
+    expect(res.passed).toBe(true);
+  });
+
+  it('rejects Step 4 when hands are far apart or invalid single hand', () => {
+    const handA = {
+      landmarks: Array.from({ length: 21 }, () => ({ x: 0.15, y: 0.50, z: 0 })),
+      palmCenter: { x: 0.15, y: 0.50, z: 0 },
+      scale: 0.15
+    };
+    const handB = {
+      landmarks: Array.from({ length: 21 }, () => ({ x: 0.85, y: 0.50, z: 0 })),
+      palmCenter: { x: 0.85, y: 0.50, z: 0 },
+      scale: 0.15
+    };
+    expect(checkStep4BacksOfFingers([handA, handB])).toBe(false);
+
+    // Single narrow flat hand with fingers extended straight
+    const flatHand = {
+      landmarks: Array.from({ length: 21 }, (_, i) => ({
+        x: 0.50 + (i === 0 ? 0 : 0.005),
+        y: 0.80 - (i * 0.03), // very tall, thin hand
+        z: 0
+      })),
+      palmCenter: { x: 0.50, y: 0.65, z: 0 },
+      scale: 0.35
+    };
+    expect(checkStep4BacksOfFingers([flatHand])).toBe(false);
+  });
+
+  it('accepts Step 4 adaptive ensemble fusion when model predicts Step_3 with verified locked fingers geometry', () => {
+    const engine = new StepRecognitionEngine({
+      mode: 'adaptive',
+      enableGeometryFallback: true,
+      consecutiveFramesRequired: 3,
+      targetDurationMs: 500
+    });
+    engine.currentStep = 4;
+
+    const mergedHand = {
+      landmarks: Array.from({ length: 21 }, (_, i) => ({
+        x: 0.40 + (i % 5) * 0.05,
+        y: 0.35 + Math.floor(i / 5) * 0.05,
+        z: 0
+      })),
+      scale: 0.18,
+      isMerged: true
+    };
+
+    let now = 1000;
+    let geomPassedOnStep4 = false;
+    for (let i = 0; i < 12; i++) {
+      const res = engine.predict({
+        class: 'Step_3', // raw classifier outputs Step_3 during locked fingers
+        confidence: 0.95,
+        handCount: 1,
+        handConfidence: 0.95,
+        handMovement: 0.08,
+        handsData: [mergedHand]
+      }, now);
+      if (res.rawStep === 4) {
+        geomPassedOnStep4 = res.geometryRulePassed;
+      }
+      now += 100;
+    }
+
+    expect(geomPassedOnStep4).toBe(true);
+    expect(engine.completedSteps).toContain(4);
+    expect(engine.currentStep).toBe(5);
+  });
+
   it('validates Step 5 when thumb is clasped with rotational motion', () => {
     const handA = create3DHand({ wrist: { x: 0.48, y: 0.55, z: 0 } });
     const handB = create3DHand({ wrist: { x: 0.50, y: 0.55, z: 0.02 } });

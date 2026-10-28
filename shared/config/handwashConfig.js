@@ -50,8 +50,8 @@ export const HANDWASH_CONFIG = {
     STEP_2_BOX_OVERLAP: 0.30,         // Min bounding box overlap ratio (> 30%)
     STEP_3_BOX_OVERLAP: 0.45,         // Min bounding box overlap ratio (> 45%)
     STEP_3_MIN_ALTERNATIONS: 2,       // Min alternating x-order fingertip switches between left & right hand
-    STEP_4_CURL_RATIO: 0.85,          // Max curled fingertip-to-palm distance ratio relative to hand scale
-    STEP_4_RESTING_DIST: 0.85,        // Max distance between curled fingers and opposing palm
+    STEP_4_CURL_RATIO: 0.95,          // Max curled fingertip-to-palm distance ratio relative to hand scale
+    STEP_4_RESTING_DIST: 1.25,        // Max distance between curled fingers and opposing palm
     STEP_5_THUMB_PALM_DIST: 0.80,     // Max distance from thumb tip to opposing palm/fist area
     STEP_5_ROTATION_MOVEMENT: 0.03,   // Movement threshold required during thumb twisting
     STEP_6_FINGERTIP_DIST: 0.65,      // Max distance from fingertips of one hand to opposing palm center
